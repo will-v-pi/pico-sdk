@@ -1,0 +1,17 @@
+set(CMAKE_SYSTEM_NAME PICO)
+
+if (NOT DEFINED PICO_PREVIOUS_CMAKE_TOOLCHAIN_FILE)
+    unset(CMAKE_TOOLCHAIN_FILE CACHE)
+else()
+    set(CMAKE_TOOLCHAIN_FILE ${PICO_PREVIOUS_CMAKE_TOOLCHAIN_FILE})
+endif()
+
+if (${PROJECT_NAME} MATCHES "CMAKE_TRY_COMPILE")
+    # Don't log toolchain searches when testing compiler
+    set(CMAKE_MESSAGE_LOG_LEVEL ERROR)
+endif()
+include(${CMAKE_CURRENT_LIST_DIR}/../pico_sdk_init.cmake)
+
+message("Toolchain file now ${CMAKE_TOOLCHAIN_FILE}")
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}" CACHE FILEPATH "")
+include(${CMAKE_TOOLCHAIN_FILE})

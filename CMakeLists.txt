@@ -68,4 +68,31 @@ if (NOT TARGET _pico_sdk_inclusion_marker)
     if (NOT PICO_SDK_TOP_LEVEL_PROJECT)
         pico_promote_common_scope_vars()
     endif()
+
+    if (PICO_SDK_TOP_LEVEL_PROJECT)
+        # Create a ConfigVersion.cmake file
+        include(CMakePackageConfigHelpers)
+        write_basic_package_version_file(
+            ${CMAKE_BINARY_DIR}/pico-sdk-config-version.cmake
+            VERSION ${PICO_SDK_VERSION_STRING}
+            COMPATIBILITY SameMajorVersion
+            ARCH_INDEPENDENT
+        )
+
+        # Temporarily copy that file into source tree
+        install(CODE "file(COPY ${CMAKE_BINARY_DIR}/pico-sdk-config-version.cmake DESTINATION ${CMAKE_CURRENT_LIST_DIR}/cmake/)")
+
+        # Install entire pico-sdk directory
+        get_filename_component(binDir ${CMAKE_BINARY_DIR} NAME)
+        install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+            TYPE LIB
+            PATTERN "${binDir}*" EXCLUDE
+            PATTERN "*.git*" EXCLUDE
+            PATTERN "*.github*" EXCLUDE
+            PATTERN "*.vscode*" EXCLUDE
+            PATTERN "test*" EXCLUDE)
+
+        # Delete temp file
+        install(CODE "file(REMOVE ${CMAKE_CURRENT_LIST_DIR}/cmake/pico-sdk-config-version.cmake)")
+    endif()
 endif()
