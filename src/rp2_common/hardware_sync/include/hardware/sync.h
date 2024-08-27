@@ -86,7 +86,7 @@ __force_inline static void __nop(void) {
 
  * The SEV (send event) instruction sends an event to both cores.
  */
-#if !__has_builtin(__sev)
+#if !__has_builtin(__sev) && !defined(__sev)
 __force_inline static void __sev(void) {
 #ifdef __riscv
     __hazard3_unblock();
@@ -102,7 +102,7 @@ __force_inline static void __sev(void) {
  * The WFE (wait for event) instruction waits until one of a number of
  * events occurs, including events signalled by the SEV instruction on either core.
  */
-#if !__has_builtin(__wfe)
+#if !__has_builtin(__wfe) && !defined(__wfe)
 __force_inline static void __wfe(void) {
 #ifdef __riscv
     __hazard3_block();
@@ -117,7 +117,7 @@ __force_inline static void __wfe(void) {
 *
  * The WFI (wait for interrupt) instruction waits for a interrupt to wake up the core.
  */
-#if !__has_builtin(__wfi)
+#if !__has_builtin(__wfi) && !defined(__wfi)
 __force_inline static void __wfi(void) {
     pico_default_asm_volatile("wfi");
 }
@@ -129,6 +129,7 @@ __force_inline static void __wfi(void) {
  * The DMB (data memory barrier) acts as a memory barrier, all memory accesses prior to this
  * instruction will be observed before any explicit access after the instruction.
  */
+#ifndef __dmb
 __force_inline static void __dmb(void) {
 #ifdef __riscv
     __asm volatile ("fence rw, rw" : : : "memory");
@@ -136,6 +137,7 @@ __force_inline static void __dmb(void) {
     pico_default_asm_volatile ("dmb" : : : "memory");
 #endif
 }
+#endif
 
 /*! \brief Insert a DSB instruction in to the code path.
  *  \ingroup hardware_sync
@@ -144,6 +146,7 @@ __force_inline static void __dmb(void) {
  * memory barrier (DMB). The DSB operation completes when all explicit memory
  * accesses before this instruction complete.
  */
+#ifndef __dsb
 __force_inline static void __dsb(void) {
 #ifdef __riscv
     __asm volatile ("fence rw, rw" : : : "memory");
@@ -151,6 +154,7 @@ __force_inline static void __dsb(void) {
     pico_default_asm_volatile ("dsb" : : : "memory");
 #endif
 }
+#endif
 
 /*! \brief Insert a ISB instruction in to the code path.
  *  \ingroup hardware_sync
@@ -159,6 +163,7 @@ __force_inline static void __dsb(void) {
  * so that all instructions following the ISB are fetched from cache or memory again, after
  * the ISB instruction has been completed.
  */
+#ifndef __isb
 __force_inline static void __isb(void) {
 #ifdef __riscv
     __asm volatile ("fence.i" : : : "memory");
@@ -166,6 +171,7 @@ __force_inline static void __isb(void) {
     pico_default_asm_volatile("isb" ::: "memory");
 #endif
 }
+#endif
 
 /*! \brief Acquire a memory fence
  *  \ingroup hardware_sync
