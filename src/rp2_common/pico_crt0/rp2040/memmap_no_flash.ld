@@ -69,6 +69,7 @@ SECTIONS
         *(.dtors)
 
         *(.eh_frame*)
+        . = ALIGN(ALIGNOF(.rodata));
     } > RAM
 
     .rodata : {
@@ -92,15 +93,15 @@ SECTIONS
     __exidx_end = .;
 
     /* Machine inspectable binary information */
-    . = ALIGN(4);
-    __binary_info_start = .;
     .binary_info :
     {
+        . = ALIGN(4);
+        __binary_info_start = .;
         KEEP(*(.binary_info.keep.*))
         *(.binary_info.*)
+        __binary_info_end = .;
+        . = ALIGN(ALIGNOF(.data));
     } > RAM
-    __binary_info_end = .;
-    . = ALIGN(4);
 
     .data : {
         __data_start__ = .;

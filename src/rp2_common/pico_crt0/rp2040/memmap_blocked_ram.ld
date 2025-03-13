@@ -107,7 +107,7 @@ SECTIONS
         PROVIDE_HIDDEN (__fini_array_end = .);
 
         *(.eh_frame*)
-        . = ALIGN(4);
+        . = ALIGN(ALIGNOF(.rodata));
     } > FLASH
 
     .rodata : {

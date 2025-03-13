@@ -116,6 +116,7 @@ SECTIONS
         __boot2_start__ = .;
         *(.boot2)
         __boot2_end__ = .;
+        . = ALIGN(ALIGNOF(.rodata));
     } > FLASH
 
     ASSERT(__boot2_end__ - __boot2_start__ <= 256,

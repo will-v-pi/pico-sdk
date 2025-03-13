@@ -126,11 +126,10 @@ SECTIONS
         *(.dtors)
 
         *(.eh_frame*)
-        . = ALIGN(4);
+        . = ALIGN(ALIGNOF(.data));
         __ram_text_end__ = .;
     } > RAM AT> FLASH
     __ram_text_source__ = LOADADDR(.text);
-    . = ALIGN(4);
 
     .data : {
         __data_start__ = .;
