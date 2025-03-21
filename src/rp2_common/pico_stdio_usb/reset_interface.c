@@ -131,6 +131,9 @@ static bool resetd_control_xfer_cb(uint8_t __unused rhport, uint8_t stage, tusb_
             }
             active_low = request->wValue & 0x200;
 #endif
+            // Disconnect tud, as leaving it connected can cause issues with some hosts
+            tud_disconnect();
+
             rom_reset_usb_boot_extra(gpio, (request->wValue & 0x7f) | PICO_STDIO_USB_RESET_BOOTSEL_INTERFACE_DISABLE_MASK, active_low);
             // does not return, otherwise we'd return true
         }
@@ -182,6 +185,9 @@ void tud_cdc_line_coding_cb(__unused uint8_t itf, cdc_line_coding_t const* p_lin
         int gpio = -1;
         bool active_low = false;
 #endif
+        // Disconnect tud, as leaving it connected can cause issues with some hosts
+        tud_disconnect();
+
         rom_reset_usb_boot_extra(gpio, PICO_STDIO_USB_RESET_BOOTSEL_INTERFACE_DISABLE_MASK, active_low);
     }
 }
