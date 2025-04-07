@@ -1,0 +1,26 @@
+name: Checks
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Check Board Headers
+      run: tools/check_all_board_headers.sh
+
+    - name: Check Doxygen Groups
+      run: tools/check_doxygen_groups.py
+
+    - name: Check Configs
+      run: tools/check_configs.sh
