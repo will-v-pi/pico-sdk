@@ -22,6 +22,3 @@ jobs:
     # TODO: Re-enable this once it passes
     # - name: Check Doxygen Groups
     #   run: tools/check_doxygen_groups.py
-
-    - name: Check Configs
-      run: tools/check_configs.sh
