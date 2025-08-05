@@ -207,6 +207,21 @@ typedef int (*bootrom_api_callback_generic_t)(uint32_t r0, uint32_t r1, uint32_t
 #define ROM_FUNC_VALIDATE_NS_BUFFER             ROM_TABLE_CODE('V', 'B')
 #endif
 
+// minimum workarea sizes for rom functions
+#define RP2350_BLOCK_SEARCH_WORKAREA_SIZE       0xd00   // 3.25k recommended
+#define MAX_WORKAREA_SIZE                       RP2350_BLOCK_SEARCH_WORKAREA_SIZE
+#if PICO_RP2350
+#define LOAD_PARTITION_TABLE_WORKAREA_SIZE      RP2350_BLOCK_SEARCH_WORKAREA_SIZE
+#define PICK_AB_PARTITION_WORKAREA_SIZE         RP2350_BLOCK_SEARCH_WORKAREA_SIZE
+#define GET_UF2_TARGET_PARTITION_WORKAREA_SIZE  RP2350_BLOCK_SEARCH_WORKAREA_SIZE
+#define CHAIN_IMAGE_WORKAREA_SIZE               RP2350_BLOCK_SEARCH_WORKAREA_SIZE
+#else
+#define LOAD_PARTITION_TABLE_WORKAREA_SIZE      MAX_WORKAREA_SIZE
+#define PICK_AB_PARTITION_WORKAREA_SIZE         MAX_WORKAREA_SIZE
+#define GET_UF2_TARGET_PARTITION_WORKAREA_SIZE  MAX_WORKAREA_SIZE
+#define CHAIN_IMAGE_WORKAREA_SIZE               MAX_WORKAREA_SIZE
+#endif
+
 // these form a bit set
 #define BOOTROM_STATE_RESET_CURRENT_CORE 0x01
 #define BOOTROM_STATE_RESET_OTHER_CORE   0x02
@@ -215,19 +230,25 @@ typedef int (*bootrom_api_callback_generic_t)(uint32_t r0, uint32_t r1, uint32_t
 // partition level stuff is returned first (note PT_INFO flags is only 16 bits)
 
 // 3 words: pt_count, unpartitioned_perm_loc, unpartioned_perm_flags
-#define PT_INFO_PT_INFO                         0x0001
-#define PT_INFO_SINGLE_PARTITION                0x8000 // marker to just include a single partition in the results)
+#define PT_INFO_PT_INFO                             0x0001
+#define PT_INFO_SINGLE_PARTITION                    0x8000  // marker to just include a single partition in the results)
+#define PT_INFO_SINGLE_PARTITION_LSB                24      // LSB of the single partition number
+#define PT_INFO_SINGLE_PARTITION_BITS               0x7f000000
+#define PT_INFO_PT_INFO_SIZE                        3
 
 // then in order per partition selected
 
-// 2 words: unpartitioned_perm_loc, unpartioned_perm_flags
-#define PT_INFO_PARTITION_LOCATION_AND_FLAGS    0x0010
+// 2 words: partition_perm_loc, partition_perm_flags
+#define PT_INFO_PARTITION_LOCATION_AND_FLAGS        0x0010
+#define PT_INFO_PARTITION_LOCATION_AND_FLAGS_SIZE   2
 // 2 words: id lsb first
-#define PT_INFO_PARTITION_ID                    0x0020
+#define PT_INFO_PARTITION_ID                        0x0020
+#define PT_INFO_PARTITION_ID_SIZE                   2
 // n+1 words: n, family_id...
-#define PT_INFO_PARTITION_FAMILY_IDS            0x0040
+#define PT_INFO_PARTITION_FAMILY_IDS                0x0040
 // (n+3)/4 words... bytes are: n (len), c0, c1, ... cn-1 padded to word boundary with zeroes
-#define PT_INFO_PARTITION_NAME                  0x0080
+#define PT_INFO_PARTITION_NAME                      0x0080
+#define PT_INFO_PARTITION_NAME_MAX_LENGTH           127
 
 // items are returned in order
 // 3 words package_id, device_id_lo, device_id_hi

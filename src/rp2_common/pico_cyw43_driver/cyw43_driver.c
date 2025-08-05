@@ -151,8 +151,8 @@ bool cyw43_driver_init(async_context_t *context) {
                 };
                 rom_set_bootrom_stack(&stack);
             #endif
-            uint32_t* workarea = malloc(0x1000);
-            picked_p = rom_pick_ab_partition_during_update(workarea, 0x1000, picked_p);
+            uint32_t* workarea = malloc(PICK_AB_PARTITION_WORKAREA_SIZE);
+            picked_p = rom_pick_ab_partition_during_update(workarea, PICK_AB_PARTITION_WORKAREA_SIZE, picked_p);
             free(workarea);
             #ifdef __riscv
                 // Reset bootrom stack
@@ -170,7 +170,7 @@ bool cyw43_driver_init(async_context_t *context) {
             }
 
             CYW43_DEBUG("Chosen CYW43 firmware in partition %d\n", picked_p);
-            int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (picked_p << 24));
+            int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (picked_p << PT_INFO_SINGLE_PARTITION_LSB));
             hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION));
             hard_assert(ret == 3);
 
