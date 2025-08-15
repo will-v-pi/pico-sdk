@@ -19,6 +19,12 @@ extern const int pico_default_uart_tx_pin;
 extern const int pico_default_uart_rx_pin;
 #define PICO_DEFAULT_LED_PIN pico_default_led_pin
 extern const int pico_default_led_pin;
+#define PICO_DEFAULT_LED_PIN_INVERTED pico_default_led_pin_inverted
+extern const int pico_default_led_pin_inverted;
+#define PICO_DEFAULT_WS2812_PIN pico_default_ws2812_pin
+extern const int pico_default_ws2812_pin;
+#define PICO_DEFAULT_WS2812_POWER_PIN pico_default_ws2812_power_pin
+extern const int pico_default_ws2812_power_pin;
 #define PICO_DEFAULT_I2C pico_default_i2c
 extern const int pico_default_i2c;
 #define PICO_DEFAULT_I2C_SDA_PIN pico_default_i2c_sda_pin
@@ -41,6 +47,25 @@ extern const int pico_smps_mode_pin;
 extern const int pico_vbus_pin;
 #define PICO_VSYS_PIN pico_vsys_pin
 extern const int pico_vsys_pin;
+
+#define CYW43_DEFAULT_PIN_WL_REG_ON pico_cyw43_wl_reg_on_pin
+extern const int pico_cyw43_wl_reg_on_pin;
+#define CYW43_DEFAULT_PIN_WL_DATA_OUT pico_cyw43_wl_data_out_pin
+extern const int pico_cyw43_wl_data_out_pin;
+#define CYW43_DEFAULT_PIN_WL_DATA_IN pico_cyw43_wl_data_in_pin
+extern const int pico_cyw43_wl_data_in_pin;
+#define CYW43_DEFAULT_PIN_WL_HOST_WAKE pico_cyw43_wl_host_wake_pin
+extern const int pico_cyw43_wl_host_wake_pin;
+#define CYW43_DEFAULT_PIN_WL_CLOCK pico_cyw43_wl_clock_pin
+extern const int pico_cyw43_wl_clock_pin;
+#define CYW43_DEFAULT_PIN_WL_CS pico_cyw43_wl_cs_pin
+extern const int pico_cyw43_wl_cs_pin;
+
+#define CYW43_WL_GPIO_LED_PIN pico_cyw43_wl_gpio_led_pin
+extern const int pico_cyw43_wl_gpio_led_pin;
+
+#define PICO_COLORED_STATUS_LED_USES_WRGB pico_colored_status_led_uses_wrgb
+extern const int pico_colored_status_led_uses_wrgb;
 
 #endif
 

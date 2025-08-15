@@ -17,6 +17,7 @@ cc_library(
     target_compatible_with = compatible_with_rp2(),
     deps = [
         ":PICO_DEFAULT_UART_BAUD_RATE",
+        "//src/common/pico_configurable_pins",
         "//src/rp2_common:hardware_regs",
         "//src/rp2_common:hardware_structs",
         "//src/rp2_common:pico_platform",

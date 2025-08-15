@@ -218,3 +218,14 @@ int __not_in_flash_func(spi_read16_blocking)(spi_inst_t *spi, uint16_t repeated_
 
     return (int)len;
 }
+
+#if PICO_SUPPORT_CONFIGURABLE_PINS
+#include "pico/configurable_pins.h"
+spi_inst_t *pico_get_default_spi_instance(void) {
+    if (pico_default_spi == 0) {
+        return spi0;
+    } else if (pico_default_spi == 1) {
+        return spi1;
+    }
+}
+#endif

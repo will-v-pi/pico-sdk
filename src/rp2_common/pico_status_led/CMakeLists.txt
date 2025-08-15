@@ -8,6 +8,7 @@ target_include_directories(pico_status_led_headers SYSTEM INTERFACE
 pico_mirrored_target_link_libraries(pico_status_led INTERFACE
     hardware_gpio
     hardware_pio
+    pico_configurable_pins
 )
 if (PICO_CYW43_SUPPORTED)
     pico_mirrored_target_link_libraries(pico_status_led INTERFACE

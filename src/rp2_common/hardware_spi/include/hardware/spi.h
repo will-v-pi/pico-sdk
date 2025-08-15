@@ -72,8 +72,14 @@ typedef struct spi_inst spi_inst_t;
  * \hideinitializer
  * \brief Returns the default SPI instance
  */
-#if !defined(PICO_DEFAULT_SPI_INSTANCE) && defined(PICO_DEFAULT_SPI)
+#if !defined(PICO_DEFAULT_SPI_INSTANCE)
+#if PICO_SUPPORT_CONFIGURABLE_PINS
+#include "pico/configurable_pins.h"
+spi_inst_t *pico_get_default_spi_instance(void);
+#define PICO_DEFAULT_SPI_INSTANCE() pico_get_default_spi_instance()
+#elif defined(PICO_DEFAULT_SPI)
 #define PICO_DEFAULT_SPI_INSTANCE() (__CONCAT(spi,PICO_DEFAULT_SPI))
+#endif
 #endif
 
 /**

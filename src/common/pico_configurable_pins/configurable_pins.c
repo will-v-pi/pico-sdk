@@ -18,6 +18,9 @@ bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CO
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_uart_tx_pin, 0));
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_uart_rx_pin, 1));
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_led_pin, 25));
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_led_pin_inverted, 0));
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_ws2812_pin, -1));
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_ws2812_power_pin, -1));
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_i2c, 0));
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_i2c_sda_pin, 4));
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_default_i2c_scl_pin, 5));
@@ -29,5 +32,16 @@ bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CO
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_smps_mode_pin, 23));
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_vbus_pin, 24));
 bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_vsys_pin, 29));
+
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_cyw43_wl_reg_on_pin, 23));
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_cyw43_wl_data_out_pin, 24));
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_cyw43_wl_data_in_pin, 24));
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_cyw43_wl_host_wake_pin, 24));
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_cyw43_wl_clock_pin, 29));
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_cyw43_wl_cs_pin, 25));
+
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_cyw43_wl_gpio_led_pin, -1));
+
+bi_decl(bi_ptr_global_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_colored_status_led_uses_wrgb, 0));
 
 #endif

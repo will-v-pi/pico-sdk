@@ -12,6 +12,7 @@
 #include "pico.h"
 #include "hardware/gpio.h"
 #include "pico/time.h"
+#include "pico/configurable_pins.h"
 
 #ifdef __cplusplus
 extern "C" {

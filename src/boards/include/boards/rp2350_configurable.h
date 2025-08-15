@@ -15,9 +15,10 @@
 #define _BOARDS_RP2350_CONFIGURABLE_H
 
 pico_board_cmake_set(PICO_PLATFORM, rp2350)
+pico_board_cmake_set(PICO_CYW43_SUPPORTED, 1)
 
 // For board detection
-#define RASPBERRYPI_RP2350
+#define RASPBERRYPI_RP2350_CONFIGURABLE
 
 // For post-compile configuration
 pico_board_cmake_set(PICO_SUPPORT_CONFIGURABLE_PINS, 1)

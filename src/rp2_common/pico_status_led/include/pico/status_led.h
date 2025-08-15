@@ -18,6 +18,7 @@
 #define _PICO_STATUS_LED_H
 
 #include "hardware/gpio.h"
+#include "pico/configurable_pins.h"
 
 #if defined(CYW43_WL_GPIO_LED_PIN)
 #include "cyw43.h"
@@ -27,6 +28,11 @@ struct async_context;
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if PICO_SUPPORT_CONFIGURABLE_PINS
+#define PICO_STATUS_LED_AVAILABLE (PICO_DEFAULT_LED_PIN >= 0 || CYW43_WL_GPIO_LED_PIN >= 0)
+#define PICO_COLORED_STATUS_LED_AVAILABLE (PICO_DEFAULT_WS2812_PIN >= 0)
 #endif
 
 // PICO_CONFIG: PICO_STATUS_LED_AVAILABLE, Indicate whether a single-color status LED is available, type=bool, default=1 if PICO_DEFAULT_LED_PIN or CYW43_WL_GPIO_LED_PIN is defined; may be set by the user to 0 to not use either even if they are available, group=pico_status_led
@@ -197,16 +203,21 @@ static inline bool status_led_set_state(bool led_on) {
     if (status_led_via_colored_status_led()) {
         return colored_status_led_set_state(led_on);
     } else if (status_led_supported()) {
-#if defined(PICO_DEFAULT_LED_PIN)
-    #if PICO_DEFAULT_LED_PIN_INVERTED
-        gpio_put(PICO_DEFAULT_LED_PIN, !led_on);
-    #else
-        gpio_put(PICO_DEFAULT_LED_PIN, led_on);
-    #endif
+#ifdef PICO_DEFAULT_LED_PIN
+    if (PICO_DEFAULT_LED_PIN >= 0) {
+        if (PICO_DEFAULT_LED_PIN_INVERTED) {
+            gpio_put(PICO_DEFAULT_LED_PIN, !led_on);
+        } else {
+            gpio_put(PICO_DEFAULT_LED_PIN, led_on);
+        }
         return true;
-#elif defined(CYW43_WL_GPIO_LED_PIN)
+    }
+#endif
+#ifdef CYW43_WL_GPIO_LED_PIN
+    if (CYW43_WL_GPIO_LED_PIN >= 0) {
         cyw43_gpio_set(&cyw43_state, CYW43_WL_GPIO_LED_PIN, led_on);
         return true;
+    }
 #endif
     }
     return false;
@@ -223,16 +234,21 @@ static inline bool status_led_get_state() {
     if (status_led_via_colored_status_led()) {
         return colored_status_led_get_state();
     } else if (status_led_supported()) {
-#if defined(PICO_DEFAULT_LED_PIN)
-    #if PICO_DEFAULT_LED_PIN_INVERTED
-        return !gpio_get(PICO_DEFAULT_LED_PIN);
-    #else
-        return gpio_get(PICO_DEFAULT_LED_PIN);
-    #endif
-#elif defined CYW43_WL_GPIO_LED_PIN
+#ifdef PICO_DEFAULT_LED_PIN
+    if (PICO_DEFAULT_LED_PIN >= 0) {
+        if (PICO_DEFAULT_LED_PIN_INVERTED) {
+            return !gpio_get(PICO_DEFAULT_LED_PIN);
+        } else {
+            return gpio_get(PICO_DEFAULT_LED_PIN);
+        }
+    }
+#endif
+#ifdef CYW43_WL_GPIO_LED_PIN
+    if (CYW43_WL_GPIO_LED_PIN >= 0) {
         bool value = false;
         cyw43_gpio_get(&cyw43_state, CYW43_WL_GPIO_LED_PIN, &value);
         return value;
+    }
 #endif
     }
     return false;
