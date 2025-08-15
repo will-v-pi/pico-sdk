@@ -22,6 +22,11 @@ static void *chars_available_param;
 #define stdio_bi_decl_if_func_used bi_decl_if_func_used
 #endif
 
+#if PICO_SUPPORT_CONFIGURABLE_PINS
+#define stdio_pins_bi_decl_if_func_used(x)
+#else
+#define stdio_pins_bi_decl_if_func_used bi_decl_if_func_used
+
 #ifdef PICO_DEFAULT_UART_TX_PIN
 #if (PICO_DEFAULT_UART_TX_PIN & 0x1) || (PICO_RP2040 && (PICO_DEFAULT_UART_TX_PIN & 0x2))
 #error "Specified PICO_DEFAULT_UART_TX_PIN does not support UART TX"
@@ -33,6 +38,7 @@ static void *chars_available_param;
 #error "Specified PICO_DEFAULT_UART_RX_PIN does not support UART RX"
 #endif
 #endif
+#endif // PICO_SUPPORT_CONFIGURABLE_PINS
 
 void stdio_uart_init(void) {
 #ifdef uart_default
@@ -44,19 +50,19 @@ void stdio_uart_init(void) {
     rx_pin = PICO_DEFAULT_UART_RX_PIN;
     stdio_bi_decl_if_func_used(bi_program_feature("UART stdin / stdout"));
 #if PICO_DEFAULT_UART_TX_PIN == PICO_DEFAULT_UART_RX_PIN
-    bi_decl_if_func_used(bi_2pins_with_func(PICO_DEFAULT_UART_RX_PIN, PICO_DEFAULT_UART_TX_PIN, uart_get_funcsel(uart_default, PICO_DEFAULT_UART_RX_PIN)));
+    stdio_pins_bi_decl_if_func_used(bi_2pins_with_func(PICO_DEFAULT_UART_RX_PIN, PICO_DEFAULT_UART_TX_PIN, uart_get_funcsel(uart_default, PICO_DEFAULT_UART_RX_PIN)));
 #else
-    bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_TX_PIN, UART_FUNCSEL_NUM(uart_default, PICO_DEFAULT_UART_TX_PIN)));
-    bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_RX_PIN, UART_FUNCSEL_NUM(uart_default, PICO_DEFAULT_UART_RX_PIN)));
+    stdio_pins_bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_TX_PIN, UART_FUNCSEL_NUM(uart_default, PICO_DEFAULT_UART_TX_PIN)));
+    stdio_pins_bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_RX_PIN, UART_FUNCSEL_NUM(uart_default, PICO_DEFAULT_UART_RX_PIN)));
 #endif
 #else
     stdio_bi_decl_if_func_used(bi_program_feature("UART stdout"));
-    bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_TX_PIN, GPIO_FUNC_UART));
+    stdio_pins_bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_TX_PIN, GPIO_FUNC_UART));
 #endif
 #elif defined(PICO_DEFAULT_UART_RX_PIN)
     rx_pin = PICO_DEFAULT_UART_RX_PIN;
     stdio_bi_decl_if_func_used(bi_program_feature("UART stdin"));
-    bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_RX_PIN, GPIO_FUNC_UART));
+    stdio_pins_bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_RX_PIN, GPIO_FUNC_UART));
 #endif
 #if !defined(PICO_DEFAULT_UART_BAUD_RATE)
     panic("UART baud rate undefined");
@@ -68,7 +74,7 @@ void stdio_uart_init(void) {
 
 void stdout_uart_init(void) {
 #if defined(uart_default) && defined(PICO_DEFAULT_UART_TX_PIN)
-    bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_TX_PIN, UART_FUNCSEL_NUM(uart_default, PICO_DEFAULT_UART_TX_PIN)));
+    stdio_pins_bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_TX_PIN, UART_FUNCSEL_NUM(uart_default, PICO_DEFAULT_UART_TX_PIN)));
 #if !defined(PICO_DEFAULT_UART_BAUD_RATE)
     panic("UART baud rate undefined");
 #else
@@ -80,7 +86,7 @@ void stdout_uart_init(void) {
 
 void stdin_uart_init(void) {
 #if defined(uart_default) && defined(PICO_DEFAULT_UART_RX_PIN)
-    bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_RX_PIN, UART_FUNCSEL_NUM(uart_default, PICO_DEFAULT_UART_RX_PIN)));
+    stdio_pins_bi_decl_if_func_used(bi_1pin_with_func(PICO_DEFAULT_UART_RX_PIN, UART_FUNCSEL_NUM(uart_default, PICO_DEFAULT_UART_RX_PIN)));
 #if !defined(PICO_DEFAULT_UART_BAUD_RATE)
     panic("UART baud rate undefined");
 #else

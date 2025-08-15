@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "pico_configurable_pins",
+    srcs = ["configurable_pins.c"],
+    hdrs = ["include/pico/configurable_pins.h"],
+    includes = ["include"],
+    deps = [
+        "//src/common/pico_binary_info",
+    ],
+)

@@ -94,8 +94,14 @@ typedef struct uart_inst uart_inst_t;
  * \hideinitializer
  * \brief Returns the default UART instance based on the value of PICO_DEFAULT_UART
  */
-#if !defined(PICO_DEFAULT_UART_INSTANCE) && defined(PICO_DEFAULT_UART)
+#if !defined(PICO_DEFAULT_UART_INSTANCE)
+#if PICO_SUPPORT_CONFIGURABLE_PINS
+#include "pico/configurable_pins.h"
+uart_inst_t *pico_get_default_uart_instance(void);
+#define PICO_DEFAULT_UART_INSTANCE() pico_get_default_uart_instance()
+#elif defined(PICO_DEFAULT_UART)
 #define PICO_DEFAULT_UART_INSTANCE() (__CONCAT(uart,PICO_DEFAULT_UART))
+#endif
 #endif
 
 /**

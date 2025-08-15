@@ -23,6 +23,8 @@ if (NOT PICO_BARE_METAL)
     pico_add_subdirectory(common/pico_time)
     pico_add_subdirectory(common/pico_util)
     pico_add_subdirectory(common/pico_stdlib_headers)
+    # this requires pico_binary_info
+    pico_add_subdirectory(common/pico_configurable_pins)
 endif()
 pico_add_subdirectory(common/hardware_claim)
 #
