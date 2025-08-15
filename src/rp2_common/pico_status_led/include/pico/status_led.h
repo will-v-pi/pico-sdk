@@ -63,6 +63,10 @@ extern "C" {
 #define PICO_COLORED_STATUS_LED_USES_WRGB 0
 #endif
 
+#ifndef PICO_DEFAULT_LED_PIN_INVERTED
+#define PICO_DEFAULT_LED_PIN_INVERTED 0
+#endif
+
 /*! \brief Generate an RGB color value for /ref colored_status_led_set_on_with_color
  *  \ingroup pico_status_led
  */
