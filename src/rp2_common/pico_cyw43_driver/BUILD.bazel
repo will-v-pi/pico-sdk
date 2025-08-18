@@ -23,6 +23,9 @@ cc_library(
     hdrs = [
         "include/pico/cyw43_driver.h",
     ],
+    defines = [
+        "LIB_PICO_CYW43_DRIVER=1",
+    ],
     includes = ["include"],
     target_compatible_with = compatible_with_pico_w(),
     deps = [

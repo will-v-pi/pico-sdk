@@ -33,6 +33,7 @@ bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CON
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_vbus_pin, -1));
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_vsys_pin, -1));
 
+#if LIB_PICO_CYW43_DRIVER
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, cyw43_default_pin_wl_reg_on, -1));
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, cyw43_default_pin_wl_data_out, -1));
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, cyw43_default_pin_wl_data_in, -1));
@@ -44,6 +45,7 @@ bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CON
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, cyw43_wl_gpio_smps_pin, -1));
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, cyw43_wl_gpio_vbus_pin, -1));
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, cyw43_wl_gpio_vsys_pin, -1));
+#endif
 
 bi_decl(bi_ptr_const_int32(BINARY_INFO_TAG_CONFIGURABLE_PINS, BINARY_INFO_ID_CONFIGURABLE_PINS, pico_colored_status_led_uses_wrgb, 0));
 

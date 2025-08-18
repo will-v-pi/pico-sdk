@@ -48,6 +48,7 @@ extern const int pico_vbus_pin;
 #define PICO_VSYS_PIN pico_vsys_pin
 extern const int pico_vsys_pin;
 
+#if LIB_PICO_CYW43_DRIVER
 #define CYW43_DEFAULT_PIN_WL_REG_ON cyw43_default_pin_wl_reg_on
 extern const int cyw43_default_pin_wl_reg_on;
 #define CYW43_DEFAULT_PIN_WL_DATA_OUT cyw43_default_pin_wl_data_out
@@ -69,6 +70,7 @@ extern const int cyw43_wl_gpio_smps_pin;
 extern const int cyw43_wl_gpio_vbus_pin;
 #define CYW43_WL_GPIO_VSYS_PIN cyw43_wl_gpio_vsys_pin
 extern const int cyw43_wl_gpio_vsys_pin;
+#endif
 
 #define PICO_COLORED_STATUS_LED_USES_WRGB pico_colored_status_led_uses_wrgb
 extern const int pico_colored_status_led_uses_wrgb;

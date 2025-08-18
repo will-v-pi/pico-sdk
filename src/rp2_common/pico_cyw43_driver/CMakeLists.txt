@@ -37,7 +37,7 @@ if (EXISTS ${PICO_CYW43_DRIVER_PATH}/${CYW43_DRIVER_TEST_FILE})
             )
 
     # pico_cyw43_driver adds async_context integration to cyw43_driver
-    pico_add_library(pico_cyw43_driver NOFLAG)
+    pico_add_library(pico_cyw43_driver)
     target_sources(pico_cyw43_driver INTERFACE
             cyw43_driver.c)
     target_include_directories(pico_cyw43_driver_headers SYSTEM INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)

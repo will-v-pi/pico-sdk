@@ -26,6 +26,11 @@ pico_board_cmake_set_default(PICO_CYW43_SUPPORTED, 1)
 pico_board_cmake_set(PICO_SUPPORT_CONFIGURABLE_PINS, 1)
 #define PICO_SUPPORT_CONFIGURABLE_PINS 1
 
+// On some boards, the xosc can take longer to stabilize than is usual
+#ifndef PICO_XOSC_STARTUP_DELAY_MULTIPLIER
+#define PICO_XOSC_STARTUP_DELAY_MULTIPLIER 64
+#endif
+
 // --- RP2350 VARIANT ---
 
 // Support RP2350B (which includes support for RP2350A)
