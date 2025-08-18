@@ -222,12 +222,12 @@ int __not_in_flash_func(spi_read16_blocking)(spi_inst_t *spi, uint16_t repeated_
 #if PICO_SUPPORT_CONFIGURABLE_PINS
 #include "pico/configurable_pins.h"
 spi_inst_t *pico_get_default_spi_instance(void) {
-    if (pico_default_spi == 0) {
+    if (PICO_DEFAULT_SPI == 0) {
         return spi0;
-    } else if (pico_default_spi == 1) {
+    } else if (PICO_DEFAULT_SPI == 1) {
         return spi1;
     } else {
-        panic("Invalid SPI instance %d", pico_default_spi);
+        panic("Invalid SPI instance %d", PICO_DEFAULT_SPI);
     }
 }
 #endif

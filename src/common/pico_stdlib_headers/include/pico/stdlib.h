@@ -13,6 +13,10 @@
 #include "hardware/gpio.h"
 #include "hardware/uart.h"
 
+#if PICO_SUPPORT_CONFIGURABLE_PINS
+#include "pico/configurable_pins.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

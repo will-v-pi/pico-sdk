@@ -19,4 +19,8 @@ if (NOT TARGET pico_stdlib)
             pico_mirrored_target_link_libraries(pico_stdlib INTERFACE ${LIB})
         endif()
     endforeach()
+
+    if (PICO_SUPPORT_CONFIGURABLE_PINS)
+        pico_mirrored_target_link_libraries(pico_stdlib INTERFACE pico_configurable_pins)
+    endif()
 endif()

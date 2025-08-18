@@ -71,6 +71,13 @@ if (EXISTS ${PICO_TINYUSB_PATH}/${TINYUSB_TEST_PATH})
                     ${PICO_LWIP_PATH}/src/core/pbuf.c
                     PROPERTIES
                     COMPILE_FLAGS "-Wno-conversion")
+            if (PICO_SUPPORT_CONFIGURABLE_PINS)
+                # suppress warning when using configurable pins
+                set_source_files_properties(
+                    ${PICO_TINYUSB_PATH}/hw/bsp/rp2040/family.c
+                    PROPERTIES
+                    COMPILE_FLAGS "-Wno-sign-conversion")
+            endif()
         endif()
     endfunction()
 
