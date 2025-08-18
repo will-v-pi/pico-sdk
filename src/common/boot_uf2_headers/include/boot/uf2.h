@@ -42,8 +42,10 @@
 // Defined for backwards compatibility
 #define FAMILY_ID_MAX               BOOTROM_FAMILY_ID_MAX
 
-// 04 e3 57 99
+// 04 (size) e3 57 99
 #define UF2_EXTENSION_RP2_IGNORE_BLOCK 0x9957e304
+// 08 (size) e4 57 99
+#define UF2_EXTENSION_RP2_CRC32_BLOCK  0x9957e408
 
 struct uf2_block {
     // 32 byte header
