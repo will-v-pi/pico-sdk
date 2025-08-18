@@ -83,7 +83,7 @@
     }
 
 #define bi_ptr_int32(_tag, _id, _var, _default) __attribute__((section(".data"))) static int _var = _default; __bi_ptr_int32_with_name(_tag, _id, __STRING(_var), _var)
-#define bi_ptr_global_int32(_tag, _id, _var, _default) __attribute__((section(".data"))) const int _var = _default; __bi_ptr_int32_with_name(_tag, _id, __STRING(_var), _var)
+#define bi_ptr_const_int32(_tag, _id, _var, _default) const int _var = _default; __bi_ptr_int32_with_name(_tag, _id, __STRING(_var), _var)
 
 #define __bi_ptr_string_with_name(_tag, _id, _label, _value, _len) \
     static const struct _binary_info_ptr_string_with_name __bi_lineno_var_name = { \
@@ -98,7 +98,7 @@
     }
 
 #define bi_ptr_string(_tag, _id, _var, _default, _max_len) static char _var[_max_len] = _default; __bi_ptr_string_with_name(_tag, _id, __STRING(_var), _var, _max_len)
-#define bi_ptr_global_string(_tag, _id, _var, _default, _max_len) const char _var[_max_len] = _default; __bi_ptr_string_with_name(_tag, _id, __STRING(_var), _var, _max_len)
+#define bi_ptr_const_string(_tag, _id, _var, _default, _max_len) const char _var[_max_len] = _default; __bi_ptr_string_with_name(_tag, _id, __STRING(_var), _var, _max_len)
 
 #define bi_block_device(_tag, _name, _address, _size, _extra, _flags) \
     static const struct _binary_info_block_device __bi_lineno_var_name = { \
