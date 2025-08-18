@@ -226,6 +226,8 @@ spi_inst_t *pico_get_default_spi_instance(void) {
         return spi0;
     } else if (pico_default_spi == 1) {
         return spi1;
+    } else {
+        panic("Invalid SPI instance %d", pico_default_spi);
     }
 }
 #endif

@@ -181,6 +181,25 @@ static const struct _binary_info_named_group __bi_lineno_var_name = { \
 #define PICO_BINARY_INFO_USE_PINS_64 (NUM_BANK0_GPIOS > 32)
 #endif
 
+#if PICO_SUPPORT_CONFIGURABLE_PINS
+// Don't set pin binary info for configurable pins, but still need a piece of binary info so it compiles
+#define bi_1pin_with_func(p0, func)                  bi_int(0, 0, 0)
+#define bi_2pins_with_func(p0, p1, func)             bi_int(0, 0, 0)
+#define bi_3pins_with_func(p0, p1, p2, func)         bi_int(0, 0, 0)
+#define bi_4pins_with_func(p0, p1, p2, p3, func)     bi_int(0, 0, 0)
+#define bi_5pins_with_func(p0, p1, p2, p3, p4, func) bi_int(0, 0, 0)
+#define bi_6pins_with_func(p0, p1, p2, p3, p4, p5, func) bi_int(0, 0, 0)
+#define bi_7pins_with_func(p0, p1, p2, p3, p4, p5, p6, func) bi_int(0, 0, 0)
+#define bi_pin_range_with_func(plo, phi, func)       bi_int(0, 0, 0)
+#define bi_pin_mask_with_name(pmask, label)          bi_int(0, 0, 0)
+#define bi_pin_mask_with_names(pmask, label)         bi_int(0, 0, 0)
+#define bi_1pin_with_name(p0, name)                  bi_int(0, 0, 0)
+#define bi_2pins_with_names(p0, name0, p1, name1)    bi_int(0, 0, 0)
+#define bi_3pins_with_names(p0, name0, p1, name1, p2, name2) bi_int(0, 0, 0)
+#define bi_4pins_with_names(p0, name0, p1, name1, p2, name2, p3, name3) bi_int(0, 0, 0)
+
+#else
+
 #if !PICO_BINARY_INFO_USE_PINS_64
 #define bi_1pin_with_func(p0, func)                  __bi_encoded_pins_with_func(BI_PINS_ENCODING_MULTI | ((func << 3)) | ((p0) << 7) | ((p0) << 12))
 #define bi_2pins_with_func(p0, p1, func)             __bi_encoded_pins_with_func(BI_PINS_ENCODING_MULTI | ((func << 3)) | ((p0) << 7) | ((p1) << 12) | ((p1) << 17))
@@ -267,5 +286,7 @@ static const struct _binary_info_named_group __bi_lineno_var_name = { \
                         name2 "|" name1 "|" name3 "|" name0:\
                         name2 "|" name3 "|" name1 "|" name0)):\
                 name3 "|" name2 "|" name1 "|" name0)))
+
+#endif // PICO_SUPPORT_CONFIGURABLE_PINS
 
 #endif
