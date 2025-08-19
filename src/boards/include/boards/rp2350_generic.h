@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ * Copyright (c) 2025 Raspberry Pi (Trading) Ltd.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -9,10 +9,10 @@
 //       SHOULD ONLY CONSIST OF PREPROCESSOR DIRECTIVES
 // -----------------------------------------------------
 
-// This header may be included by other board headers as "boards/rp2350_configurable.h"
+// This header may be included by other board headers as "boards/rp2350_generic.h"
 
-#ifndef _BOARDS_RP2350_CONFIGURABLE_H
-#define _BOARDS_RP2350_CONFIGURABLE_H
+#ifndef _BOARDS_RP2350_GENERIC_H
+#define _BOARDS_RP2350_GENERIC_H
 
 pico_board_cmake_set(PICO_PLATFORM, rp2350)
 
@@ -20,7 +20,7 @@ pico_board_cmake_set(PICO_PLATFORM, rp2350)
 pico_board_cmake_set_default(PICO_CYW43_SUPPORTED, 1)
 
 // For board detection
-#define RASPBERRYPI_RP2350_CONFIGURABLE
+#define RASPBERRYPI_RP2350_GENERIC
 
 // For post-compile configuration
 pico_board_cmake_set(PICO_SUPPORT_CONFIGURABLE_PINS, 1)

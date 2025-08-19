@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ * Copyright (c) 2025 Raspberry Pi (Trading) Ltd.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -9,10 +9,10 @@
 //       SHOULD ONLY CONSIST OF PREPROCESSOR DIRECTIVES
 // -----------------------------------------------------
 
-// This header may be included by other board headers as "boards/rp2040_configurable.h"
+// This header may be included by other board headers as "boards/rp2040_generic.h"
 
-#ifndef _BOARDS_RP2040_CONFIGURABLE_H
-#define _BOARDS_RP2040_CONFIGURABLE_H
+#ifndef _BOARDS_RP2040_GENERIC_H
+#define _BOARDS_RP2040_GENERIC_H
 
 pico_board_cmake_set(PICO_PLATFORM, rp2040)
 
@@ -20,7 +20,7 @@ pico_board_cmake_set(PICO_PLATFORM, rp2040)
 pico_board_cmake_set_default(PICO_CYW43_SUPPORTED, 1)
 
 // For board detection
-#define RASPBERRYPI_RP2040_CONFIGURABLE
+#define RASPBERRYPI_RP2040_GENERIC
 
 // For post-compile configuration
 pico_board_cmake_set(PICO_SUPPORT_CONFIGURABLE_PINS, 1)
