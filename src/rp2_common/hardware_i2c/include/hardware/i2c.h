@@ -71,14 +71,23 @@ extern i2c_inst_t i2c1_inst;
 #define i2c0 (&i2c0_inst) ///< Identifier for I2C HW Block 0
 #define i2c1 (&i2c1_inst) ///< Identifier for I2C HW Block 1
 
-#if !defined(PICO_DEFAULT_I2C_INSTANCE)
 #if PICO_SUPPORT_CONFIGURABLE_PINS
-#include "pico/configurable_pins.h"
-i2c_inst_t *pico_get_default_i2c_instance(void);
-#define PICO_DEFAULT_I2C_INSTANCE() pico_get_default_i2c_instance()
-#elif defined(PICO_DEFAULT_I2C)
-#define PICO_DEFAULT_I2C_INSTANCE() (__CONCAT(i2c,PICO_DEFAULT_I2C))
+#ifdef PICO_DEFAULT_I2C_INSTANCE
+#error "Cannot define PICO_DEFAULT_I2C_INSTANCE when PICO_SUPPORT_CONFIGURABLE_PINS is defined"
 #endif
+#include "pico/configurable_pins.h"
+static inline i2c_inst_t *pico_get_default_i2c_instance(void) {
+    if (PICO_DEFAULT_I2C == 0) {
+        return i2c0;
+    } else if (PICO_DEFAULT_I2C == 1) {
+        return i2c1;
+    } else {
+        panic("Invalid I2C instance %d", PICO_DEFAULT_I2C);
+    }
+}
+#define PICO_DEFAULT_I2C_INSTANCE() pico_get_default_i2c_instance()
+#elif !defined(PICO_DEFAULT_I2C_INSTANCE) && defined(PICO_DEFAULT_I2C)
+#define PICO_DEFAULT_I2C_INSTANCE() (__CONCAT(i2c,PICO_DEFAULT_I2C))
 #endif
 
 /**

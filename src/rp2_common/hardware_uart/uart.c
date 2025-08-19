@@ -235,16 +235,3 @@ bool uart_is_readable_within_us(uart_inst_t *uart, uint32_t us) {
     } while ((time_us_32() - t) <= us);
     return false;
 }
-
-#if PICO_SUPPORT_CONFIGURABLE_PINS
-#include "pico/configurable_pins.h"
-uart_inst_t *pico_get_default_uart_instance(void) {
-    if (PICO_DEFAULT_UART == 0) {
-        return uart0;
-    } else if (PICO_DEFAULT_UART == 1) {
-        return uart1;
-    } else {
-        panic("Invalid UART instance %d", PICO_DEFAULT_UART);
-    }
-}
-#endif

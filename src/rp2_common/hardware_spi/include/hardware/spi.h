@@ -72,14 +72,23 @@ typedef struct spi_inst spi_inst_t;
  * \hideinitializer
  * \brief Returns the default SPI instance
  */
-#if !defined(PICO_DEFAULT_SPI_INSTANCE)
 #if PICO_SUPPORT_CONFIGURABLE_PINS
-#include "pico/configurable_pins.h"
-spi_inst_t *pico_get_default_spi_instance(void);
-#define PICO_DEFAULT_SPI_INSTANCE() pico_get_default_spi_instance()
-#elif defined(PICO_DEFAULT_SPI)
-#define PICO_DEFAULT_SPI_INSTANCE() (__CONCAT(spi,PICO_DEFAULT_SPI))
+#ifdef PICO_DEFAULT_SPI_INSTANCE
+#error "Cannot define PICO_DEFAULT_SPI_INSTANCE when PICO_SUPPORT_CONFIGURABLE_PINS is defined"
 #endif
+#include "pico/configurable_pins.h"
+static inline spi_inst_t *pico_get_default_spi_instance(void) {
+    if (PICO_DEFAULT_SPI == 0) {
+        return spi0;
+    } else if (PICO_DEFAULT_SPI == 1) {
+        return spi1;
+    } else {
+        panic("Invalid SPI instance %d", PICO_DEFAULT_SPI);
+    }
+}
+#define PICO_DEFAULT_SPI_INSTANCE() pico_get_default_spi_instance()
+#elif !defined(PICO_DEFAULT_SPI_INSTANCE) && defined(PICO_DEFAULT_SPI)
+#define PICO_DEFAULT_SPI_INSTANCE() (__CONCAT(spi,PICO_DEFAULT_SPI))
 #endif
 
 /**

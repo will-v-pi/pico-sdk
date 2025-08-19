@@ -356,16 +356,3 @@ int i2c_read_burst_blocking(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t 
     i2c->restart_on_next = false;
     return rc;
 }
-
-#if PICO_SUPPORT_CONFIGURABLE_PINS
-#include "pico/configurable_pins.h"
-i2c_inst_t *pico_get_default_i2c_instance(void) {
-    if (PICO_DEFAULT_I2C == 0) {
-        return i2c0;
-    } else if (PICO_DEFAULT_I2C == 1) {
-        return i2c1;
-    } else {
-        panic("Invalid I2C instance %d", PICO_DEFAULT_I2C);
-    }
-}
-#endif
