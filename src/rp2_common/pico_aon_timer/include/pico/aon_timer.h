@@ -11,6 +11,7 @@
 #include <time.h>
 #include "pico/util/datetime.h"
 #include "hardware/regs/intctrl.h"
+#include "pico/aon_timer_types.h"
 
 /** \file pico/aon_timer.h
  *  \defgroup pico_aon_timer pico_aon_timer
@@ -185,7 +186,7 @@ bool aon_timer_get_time_calendar(struct tm *tm);
  * \ingroup pico_aon_timer
  * \return the current time of the AON timer as an absolute time
  */
-absolute_time_t aon_timer_get_absolute_time(void);
+aon_timer_time_t get_aon_timer_time(void);
 
 /**
  * \brief Get the resolution of the AON timer
@@ -254,6 +255,16 @@ bool aon_timer_is_running(void);
 
 static inline uint aon_timer_get_irq_num(void) {
     return AON_TIMER_IRQ_NUM();
+}
+
+/*! \brief Convenience method to get the timestamp a number of milliseconds from the current time
+ * \ingroup timestamp
+ *
+ * \param ms the number of milliseconds to add to the current timestamp
+ * \return the future timestamp
+ */
+static inline aon_timer_time_t aon_timer_make_timeout_time_ms(uint32_t ms) {
+    return aon_timer_delayed_by_ms(get_aon_timer_time(), ms);
 }
 
 #ifdef __cplusplus

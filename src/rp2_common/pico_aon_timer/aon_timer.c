@@ -102,10 +102,10 @@ bool aon_timer_get_time_calendar(struct tm *tm) {
 #endif
 }
 
-absolute_time_t aon_timer_get_absolute_time(void) {
+aon_timer_time_t get_aon_timer_time(void) {
     struct timespec ts;
     aon_timer_get_time(&ts);
-    return from_us_since_boot(timespec_to_us(&ts));
+    return aon_timer_time_from_ms(timespec_to_ms(&ts));
 }
 
 aon_timer_alarm_handler_t aon_timer_enable_alarm(const struct timespec *ts, aon_timer_alarm_handler_t handler, bool wakeup_from_low_power) {

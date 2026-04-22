@@ -26,7 +26,7 @@
 
 bool repeater(repeating_timer_t *timer) {
     if (aon_timer_is_running()) {
-        printf("  Repeating timer %d at %dms (aon: %dms)", *(uint32_t*)timer->user_data, to_ms_since_boot(get_absolute_time()), to_ms_since_boot(aon_timer_get_absolute_time()));
+        printf("  Repeating timer %d at %dms (aon: %lldms)", *(uint32_t*)timer->user_data, to_ms_since_boot(get_absolute_time()), aon_timer_time_to_ms(get_aon_timer_time()));
     } else {
         printf("  Repeating timer %d at %dms (aon: not running)", *(uint32_t*)timer->user_data, to_ms_since_boot(get_absolute_time()));
     }
@@ -137,7 +137,9 @@ int main() {
     busy_wait_ms(SLEEP_TIME_MS);
 
     absolute_time_t start_time;
-    static absolute_time_t __persistent_data(wakeup_time);
+    aon_timer_time_t start_time_aon;
+    absolute_time_t wakeup_time;
+    static aon_timer_time_t __persistent_data(wakeup_time_aon);
     int64_t diff;
     struct timespec ts;
     int ret;
@@ -193,9 +195,10 @@ int main() {
     start_time = get_absolute_time();
     us_to_timespec(start_time, &ts);
     aon_timer_start(&ts);
+    start_time_aon = get_aon_timer_time();
 
-    wakeup_time = delayed_by_ms(start_time, SLEEP_TIME_MS);
-    ret = low_power_dormant_until_aon_timer(wakeup_time,
+    wakeup_time_aon = aon_timer_delayed_by_ms(start_time_aon, SLEEP_TIME_MS);
+    ret = low_power_dormant_until_aon_timer(wakeup_time_aon,
                                 #if PICO_RP2040
                                       DORMANT_CLOCK_SOURCE_XOSC, RTC_CLOCK_FREQ_HZ,
                                 #else
@@ -212,17 +215,17 @@ int main() {
         EXIT_TEST;
     }
     // need to use the AON timer for checking time, since the other timer is unclocked
-    diff = absolute_time_diff_us(wakeup_time, get_absolute_time());
-    if (diff > -1000000
+    diff = absolute_time_diff_us(aon_timer_time_to_absolute_time(wakeup_time_aon), get_absolute_time());
+    if (diff > -1000
         #ifdef PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS
-        + (PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS * 1000)
+        + PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS
         #endif
     ) {
         printf("ERROR: doesn't seem like timer was stopped\n");
         return - 1;
     }
-    diff = absolute_time_diff_us(wakeup_time, aon_timer_get_absolute_time());
-    printf("Woken up now @%dus since target\n", (int)diff);
+    diff = aon_timer_time_diff_ms(wakeup_time_aon, get_aon_timer_time());
+    printf("Woken up now @%dms since target\n", (int)diff);
     if (diff < 0) {
         printf("WARNING: Woke up too soon - is this within the resolution of the aon timer?\n");
     }
@@ -242,10 +245,10 @@ int main() {
     }
     my_number = 67890;
 
-    start_time = aon_timer_get_absolute_time();
+    start_time_aon = get_aon_timer_time();
 
-    wakeup_time = delayed_by_ms(start_time, SLEEP_TIME_MS);
-    ret = low_power_pstate_until_aon_timer(wakeup_time, NULL, pstate_resume_func);
+    wakeup_time_aon = aon_timer_delayed_by_ms(start_time_aon, SLEEP_TIME_MS);
+    ret = low_power_pstate_until_aon_timer(wakeup_time_aon, NULL, pstate_resume_func);
 
     if (ret != PICO_OK) {
         printf("ERROR: %d returned by low_power_pstate_until_aon_timer\n", ret);
@@ -259,7 +262,7 @@ int main() {
 post_pstate_sram_on:
     // track number of reboots
     powman_hw->scratch[3]++;
-    diff = absolute_time_diff_us(wakeup_time, aon_timer_get_absolute_time());
+    diff = aon_timer_time_diff_ms(wakeup_time_aon, get_aon_timer_time());
     printf("Woken up now @%dus since target\n", (int)diff);
     if (diff < 0) {
         printf("WARNING: Woke up too soon - is this within the resolution of the aon timer?\n");
@@ -287,14 +290,14 @@ post_pstate_sram_on:
     // pstate with sram off
     printf("Going to PSTATE with SRAM off for %d seconds\n", SLEEP_TIME_S);
 
-    start_time = aon_timer_get_absolute_time();
+    start_time_aon = get_aon_timer_time();
 
-    wakeup_time = delayed_by_ms(start_time, SLEEP_TIME_MS);
+    wakeup_time_aon = aon_timer_delayed_by_ms(start_time_aon, SLEEP_TIME_MS);
     // store in scratch, as not persisting memory over this reboot
-    powman_hw->scratch[0] = to_us_since_boot(wakeup_time) & 0xFFFFFFFF;
-    powman_hw->scratch[1] = to_us_since_boot(wakeup_time) >> 32;
+    powman_hw->scratch[0] = aon_timer_time_to_ms(wakeup_time_aon) & 0xFFFFFFFF;
+    powman_hw->scratch[1] = aon_timer_time_to_ms(wakeup_time_aon) >> 32;
     pstate = pstate_bitset_none();
-    ret = low_power_pstate_until_aon_timer(wakeup_time, &pstate, pstate_resume_func);
+    ret = low_power_pstate_until_aon_timer(wakeup_time_aon, &pstate, pstate_resume_func);
 
     if (ret != PICO_OK) {
         printf("ERROR: %d returned by low_power_pstate_until_aon_timer\n", ret);
@@ -309,17 +312,17 @@ post_pstate_sram_off:
     // track number of reboots
     powman_hw->scratch[3]++;
     // restore from scratch
-    wakeup_time = from_us_since_boot((uint64_t)powman_hw->scratch[1] << 32 | (uint64_t)powman_hw->scratch[0]);
-    diff = absolute_time_diff_us(wakeup_time, aon_timer_get_absolute_time());
+    wakeup_time_aon = aon_timer_time_from_ms((uint64_t)powman_hw->scratch[1] << 32 | (uint64_t)powman_hw->scratch[0]);
+    diff = aon_timer_time_diff_ms(wakeup_time_aon, get_aon_timer_time());
     printf("Woken up now @%dus since target\n", (int)diff);
     if (diff < 0) {
         printf("WARNING: Woke up too soon - is this within the resolution of the aon timer?\n");
-    } else if (diff > 1000000
+    } else if (diff > 1000
         #ifdef PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS
-        + (PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS * 1000)
+        + PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS
         #endif
     ) {
-        printf("ERROR: Woke up more than %d seconds late\n", (int)(diff / 1000000));
+        printf("ERROR: Woke up more than %d seconds late\n", (int)(diff / 1000));
         EXIT_TEST;
     }
 

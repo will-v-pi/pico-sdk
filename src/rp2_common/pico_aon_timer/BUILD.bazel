@@ -6,7 +6,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "pico_aon_timer",
     srcs = ["aon_timer.c"],
-    hdrs = ["include/pico/aon_timer.h"],
+    hdrs = ["include/pico/aon_timer.h", "include/pico/aon_timer_types.h"],
     defines = [
         "LIB_PICO_AON_TIMER=1",
     ],

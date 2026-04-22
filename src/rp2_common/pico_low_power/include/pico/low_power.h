@@ -9,6 +9,7 @@
 
 #include "pico.h"
 #include "hardware/timer.h"
+#include "pico/aon_timer_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -164,7 +165,7 @@ int low_power_sleep_until_gpio_pin_state(uint gpio_pin, bool edge, bool high, co
  * \param keep_enabled The clocks to keep enabled during dormant.
  * \return 0 on success, non-zero on error.
  */
-int low_power_dormant_until_aon_timer(absolute_time_t until, dormant_clock_source_t dormant_clock_source, uint src_hz, uint gpio_pin, const clock_dest_bitset_t *keep_enabled);
+int low_power_dormant_until_aon_timer(aon_timer_time_t until, dormant_clock_source_t dormant_clock_source, uint src_hz, uint gpio_pin, const clock_dest_bitset_t *keep_enabled);
 
 /*! \brief  Go dormant until GPIO pin state changes
  *  \ingroup pico_low_power
@@ -203,7 +204,7 @@ int low_power_dormant_until_gpio_pin_state(uint gpio_pin, bool edge, bool high, 
  * \param resume_func The function to call on reboot.
  * \return 0 on success, non-zero on error.
  */
-int low_power_pstate_until_aon_timer(absolute_time_t until, pstate_bitset_t *pstate, low_power_pstate_resume_func resume_func);
+int low_power_pstate_until_aon_timer(aon_timer_time_t until, pstate_bitset_t *pstate, low_power_pstate_resume_func resume_func);
 
 /*! \brief  Go to Pstate until GPIO pin state changes
  *  \ingroup pico_low_power

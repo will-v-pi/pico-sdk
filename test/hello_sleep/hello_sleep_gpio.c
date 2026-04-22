@@ -16,7 +16,7 @@
 
 bool repeater(repeating_timer_t *timer) {
     if (aon_timer_is_running()) {
-        printf("  Repeating timer at %dms (aon: %dms)\n", to_ms_since_boot(get_absolute_time()), to_ms_since_boot(aon_timer_get_absolute_time()));
+        printf("  Repeating timer at %dms (aon: %lldms)\n", to_ms_since_boot(get_absolute_time()), aon_timer_time_to_ms(get_aon_timer_time()));
     } else {
         printf("  Repeating timer at %dms (aon: not running)\n", to_ms_since_boot(get_absolute_time()));
     }

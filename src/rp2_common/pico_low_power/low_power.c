@@ -432,7 +432,7 @@ static void low_power_go_dormant(dormant_clock_source_t dormant_clock_source) {
     }
 }
 
-int low_power_dormant_until_aon_timer(absolute_time_t until,
+int low_power_dormant_until_aon_timer(aon_timer_time_t until,
                                       dormant_clock_source_t dormant_clock_source,
                                       uint src_hz, uint gpio_pin,
                                       const clock_dest_bitset_t *keep_enabled) {
@@ -440,7 +440,7 @@ int low_power_dormant_until_aon_timer(absolute_time_t until,
         return PICO_ERROR_PRECONDITION_NOT_MET;
     }
 
-    if (to_ms_since_boot(aon_timer_get_absolute_time()) + PICO_LOW_POWER_MIN_DORMANT_TIME_MS > to_ms_since_boot(until)) {
+    if (aon_timer_time_to_ms(get_aon_timer_time()) + PICO_LOW_POWER_MIN_DORMANT_TIME_MS > aon_timer_time_to_ms(until)) {
         // Prevent race condition where the timer fires before we can go dormant
         // by setting a minimum time for dormant
         return PICO_ERROR_INVALID_ARG;
@@ -471,7 +471,7 @@ int low_power_dormant_until_aon_timer(absolute_time_t until,
     low_power_setup_clocks_for_dormant(dormant_clock_source);
 
     struct timespec ts;
-    us_to_timespec(to_us_since_boot(until), &ts);
+    ms_to_timespec(aon_timer_time_to_ms(until), &ts);
     event_happened = false;
     aon_timer_enable_alarm(&ts, NULL, true);
 
@@ -615,16 +615,16 @@ static int low_power_go_pstate(pstate_bitset_t *pstate, low_power_pstate_resume_
     return rc;
 }
 
-int low_power_pstate_until_aon_timer(absolute_time_t until, pstate_bitset_t *pstate, low_power_pstate_resume_func resume_func) {
+int low_power_pstate_until_aon_timer(aon_timer_time_t until, pstate_bitset_t *pstate, low_power_pstate_resume_func resume_func) {
     if (!aon_timer_is_running()) {
         return PICO_ERROR_PRECONDITION_NOT_MET;
     }
-    if (to_ms_since_boot(aon_timer_get_absolute_time()) + PICO_LOW_POWER_MIN_PSTATE_TIME_MS > to_ms_since_boot(until)) {
+    if (aon_timer_time_to_ms(get_aon_timer_time()) + PICO_LOW_POWER_MIN_PSTATE_TIME_MS > aon_timer_time_to_ms(until)) {
         // Prevent race condition where the timer fires before we can go to pstate
         // by setting a minimum time for pstate
         return PICO_ERROR_INVALID_ARG;
     }
-    powman_enable_alarm_wakeup_at_ms(to_ms_since_boot(until));
+    powman_enable_alarm_wakeup_at_ms(aon_timer_time_to_ms(until));
 
     return low_power_go_pstate(pstate, resume_func);
 }
