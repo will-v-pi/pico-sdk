@@ -1,0 +1,4 @@
+add_executable(pico_flash_multicore_test pico_flash_test.c)
+
+target_link_libraries(pico_flash_multicore_test PRIVATE pico_test pico_rand hardware_flash pico_flash pico_multicore)
+pico_add_extra_outputs(pico_flash_multicore_test)
