@@ -36,6 +36,16 @@ void clock_stop(clock_handle_t clock) {
     configured_freq[clock] = 0;
 }
 
+void clock_pause(clock_handle_t clock) {
+    clock_hw_t *clock_hw = &clocks_hw->clk[clock];
+    hw_clear_bits(&clock_hw->ctrl, CLOCKS_CLK_USB_CTRL_ENABLE_BITS);
+}
+
+void clock_restart(clock_handle_t clock) {
+    clock_hw_t *clock_hw = &clocks_hw->clk[clock];
+    hw_set_bits(&clock_hw->ctrl, CLOCKS_CLK_USB_CTRL_ENABLE_BITS);
+}
+
 /// \tag::clock_configure[]
 static void clock_configure_internal(clock_handle_t clock, uint32_t src, uint32_t auxsrc, uint32_t actual_freq, uint32_t div) {
     clock_hw_t *clock_hw = &clocks_hw->clk[clock];

@@ -351,6 +351,24 @@ void clock_configure_int_divider(clock_handle_t clock, uint32_t src, uint32_t au
  */
 void clock_stop(clock_handle_t clock);
 
+/*! \brief Pause the specified clock
+ *  \ingroup hardware_clocks
+ *
+ * Stops the clock, but leaves the frequency setup - use \ref clock_start to start it up again
+ *
+ * \param clock The clock to pause
+ */
+void clock_pause(clock_handle_t clock);
+
+/*! \brief Start the specified clock
+ *  \ingroup hardware_clocks
+ *
+ * Used after \ref clock_pause to start the clock again
+ *
+ * \param clock The clock to start
+ */
+void clock_start(clock_handle_t clock);
+
 /*! \brief Get the current frequency of the specified clock
  *  \ingroup hardware_clocks
  *
@@ -613,6 +631,14 @@ static inline clock_dest_bitset_t *clock_dest_bitset_add(clock_dest_bitset_t *de
 static inline clock_dest_bitset_t *clock_dest_bitset_remove(clock_dest_bitset_t *dests, clock_dest_num_t dest) {
     fixed_bitset_clear(&dests->bitset, dest);
     return dests;
+}
+
+static inline bool clock_dest_bitset_is_set(const clock_dest_bitset_t *dests, clock_dest_num_t dest) {
+    return fixed_bitset_get(&dests->bitset, dest);
+}
+
+static inline bool clock_dest_bitset_none_set(const clock_dest_bitset_t *dests) {
+    return fixed_bitset_is_empty(&dests->bitset);
 }
 
 void clock_get_sleep_en_gate(clock_dest_bitset_t *clocks);

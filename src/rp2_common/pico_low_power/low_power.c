@@ -47,12 +47,61 @@
 // ------------------------------------------------------------------------------------------------------
 // todo these probably belong in h/w clocks as some sort of registered thing, but leave them private here
 //      for now
-static void prepare_for_clock_gating(void) {
+static void pause_unused_clocks(const clock_dest_bitset_t *dests, bool start) {
+    // see if we can disable some clocks
+    bool clk_peri_used = clock_dest_bitset_is_set(dests, CLK_DEST_PERI_SPI0)
+                        | clock_dest_bitset_is_set(dests, CLK_DEST_PERI_SPI1)
+                        | clock_dest_bitset_is_set(dests, CLK_DEST_PERI_UART0)
+                        | clock_dest_bitset_is_set(dests, CLK_DEST_PERI_UART1);
+#if HAS_HSTX
+    bool clk_hstx_used = clock_dest_bitset_is_set(dests, CLK_DEST_HSTX);
+#endif
+    
+#if PICO_RP2040
+    bool clk_usb_used = clock_dest_bitset_is_set(dests, CLK_DEST_USB_USBCTRL);
+    bool clk_adc_used = clock_dest_bitset_is_set(dests, CLK_DEST_ADC_ADC);
+#elif PICO_RP2350
+    bool clk_usb_used = clock_dest_bitset_is_set(dests, CLK_DEST_USB);
+    bool clk_adc_used = clock_dest_bitset_is_set(dests, CLK_DEST_ADC);
+#else
+    #error Unknown processor
+#endif
+
+    // requires passing CLK_DEST_SYS_PLL_USB if you're using pll_usb for something other than clk_usb
+    bool pll_usb_used = clk_usb_used | clock_dest_bitset_is_set(dests, CLK_DEST_SYS_PLL_USB);
+
+    if (start) {
+        // start clocks back up
+        if (!pll_usb_used) pll_reinit(pll_usb);
+        if (!clk_adc_used) clock_pause(clk_adc);
+        if (!clk_usb_used) clock_pause(clk_usb);
+        if (!clk_peri_used) clock_pause(clk_peri);
+    #if HAS_HSTX
+        if (!clk_hstx_used) clock_pause(clk_hstx);
+    #endif
+    } else {
+        // stop unused clocks
+        if (!clk_adc_used) clock_pause(clk_adc);
+        if (!clk_usb_used) clock_pause(clk_usb);
+        if (!clk_peri_used) clock_pause(clk_peri);
+    #if HAS_HSTX
+        if (!clk_hstx_used) clock_pause(clk_hstx);
+    #endif
+        if (!pll_usb_used) pll_deinit(pll_usb);
+    }
+}
+static void prepare_for_clock_gating(const clock_dest_bitset_t *dests) {
     // particularly for UART we want nothing left to clock out
     stdio_flush();
+    if (dests != NULL) {
+        pause_unused_clocks(dests, false);
+    }
 }
 
-static void post_clock_gating(void) {
+static void post_clock_gating(const clock_dest_bitset_t *dests) {
+    if (dests != NULL) {
+        pause_unused_clocks(dests, false);
+    }
     // restore all clocks in sleep mode, to prevent other __wfi from causing issues
     clock_dest_bitset_t all = clock_dest_bitset_all();
     clock_gate_sleep_en(&all);
@@ -74,7 +123,7 @@ static bool tuh_was_inited = false;
 
 static void prepare_for_clock_switch(void) {
     // particularly for UART we want nothing left to clock out
-    prepare_for_clock_gating();
+    prepare_for_clock_gating((clock_dest_bitset_t*)NULL);
 
 #if LIB_TINYUSB_DEVICE
     tud_was_inited = tud_inited();
@@ -226,7 +275,7 @@ int low_power_sleep_until_irq(const clock_dest_bitset_t *keep_enabled) {
 
     add_library_clocks(&local_keep_enabled);
 
-    prepare_for_clock_gating();
+    prepare_for_clock_gating(&local_keep_enabled);
     // gate clocks
     clock_gate_sleep_en(&local_keep_enabled);
 
@@ -235,7 +284,7 @@ int low_power_sleep_until_irq(const clock_dest_bitset_t *keep_enabled) {
     __wfi();
     low_power_disable_processor_deep_sleep();
 
-    post_clock_gating();
+    post_clock_gating(&local_keep_enabled);
 
     return 0;
 }
@@ -275,7 +324,7 @@ int low_power_sleep_until_timer(timer_hw_t *timer, absolute_time_t until,
 
     if (exclusive) save_and_disable_other_interrupts(TIMER_BASE_IRQ + alarm_num + (timer_get_index(timer) * NUM_ALARMS));
 
-    prepare_for_clock_gating();
+    prepare_for_clock_gating(&local_keep_enabled);
     // gate clocks
     clock_gate_sleep_en(&local_keep_enabled);
 
@@ -287,7 +336,7 @@ int low_power_sleep_until_timer(timer_hw_t *timer, absolute_time_t until,
     timer_hardware_alarm_set_callback(timer, alarm_num, NULL);
     timer_hardware_alarm_unclaim(timer, alarm_num);
 
-    post_clock_gating();
+    post_clock_gating(&local_keep_enabled);
 
     if (exclusive) restore_other_interrupts();
 
@@ -330,7 +379,7 @@ int low_power_sleep_until_aon_timer(absolute_time_t until,
 
     if (exclusive) save_and_disable_other_interrupts(aon_timer_get_irq_num());
 
-    prepare_for_clock_gating();
+    prepare_for_clock_gating(&local_keep_enabled);
     // gate clocks
     clock_gate_sleep_en(&local_keep_enabled);
 
@@ -341,7 +390,7 @@ int low_power_sleep_until_aon_timer(absolute_time_t until,
 
     aon_timer_disable_alarm();
 
-    post_clock_gating();
+    post_clock_gating(&local_keep_enabled);
 
     if (exclusive) restore_other_interrupts();
 
@@ -374,7 +423,7 @@ int low_power_sleep_until_gpio_pin_state(uint gpio_pin, bool edge, bool high,
 
     if (exclusive) save_and_disable_other_interrupts(IO_IRQ_BANK0);
 
-    prepare_for_clock_gating();
+    prepare_for_clock_gating(&local_keep_enabled);
     // gate clocks
     clock_gate_sleep_en(&local_keep_enabled);
 
@@ -387,7 +436,7 @@ int low_power_sleep_until_gpio_pin_state(uint gpio_pin, bool edge, bool high,
     gpio_acknowledge_irq(gpio_pin, event);
     gpio_set_irq_enabled_with_callback(gpio_pin, event, false, NULL);
 
-    post_clock_gating();
+    post_clock_gating(&local_keep_enabled);
 
     if (exclusive) restore_other_interrupts();
 
@@ -482,7 +531,7 @@ static void low_power_wake_from_dormant(void) {
     //Re-enable the ring oscillator, which will essentially kickstart the proc
     rosc_restart();
 
-    post_clock_gating();
+    post_clock_gating((clock_dest_bitset_t*)NULL);
 
     //Restore all inactive clocks
     runtime_init_clocks();
@@ -551,7 +600,7 @@ int low_power_dormant_until_aon_timer(absolute_time_t until,
     event_happened = false;
     aon_timer_enable_alarm(&ts, NULL, true);
 
-    prepare_for_clock_gating();
+    prepare_for_clock_gating((clock_dest_bitset_t*)NULL);
     // gate clocks
     clock_gate_sleep_en(&local_keep_enabled);
 
@@ -594,7 +643,7 @@ int low_power_dormant_until_gpio_pin_state(uint gpio_pin, bool edge, bool high,
     gpio_set_input_enabled(gpio_pin, true);
     gpio_set_dormant_irq_enabled(gpio_pin, event, true);
 
-    prepare_for_clock_gating();
+    prepare_for_clock_gating((clock_dest_bitset_t*)NULL);
     // gate clocks
     clock_gate_sleep_en(&local_keep_enabled);
 

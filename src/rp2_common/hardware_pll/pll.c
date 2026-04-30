@@ -74,3 +74,17 @@ void pll_deinit(PLL pll) {
     // todo: Make sure there are no sources running from this pll?
     pll->pwr = PLL_PWR_BITS;
 }
+
+void pll_reinit(PLL pll) {
+    // Turn on PLL
+    uint32_t power = PLL_PWR_PD_BITS | // Main power
+                     PLL_PWR_VCOPD_BITS; // VCO Power
+
+    hw_clear_bits(&pll->pwr, power);
+
+    // Wait for PLL to lock
+    while (!(pll->cs & PLL_CS_LOCK_BITS)) tight_loop_contents();
+
+    // Turn on post divider
+    hw_clear_bits(&pll->pwr, PLL_PWR_POSTDIVPD_BITS);
+}

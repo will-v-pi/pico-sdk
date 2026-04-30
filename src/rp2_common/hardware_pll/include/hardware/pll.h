@@ -71,6 +71,15 @@ void pll_init(PLL pll, uint ref_div, uint vco_freq, uint post_div1, uint post_di
  */
 void pll_deinit(PLL pll);
 
+/*! \brief Reinitialise specified PLL.
+ *  \ingroup hardware_pll
+ *
+ * This will turn on the power to the specified PLL and wait for it to lock.
+ *
+ * \param pll pll_sys or pll_usb
+ */
+void pll_reinit(PLL pll);
+
 /**
  * \def PLL_RESET_NUM(pll)
  * \ingroup hardware_pll
