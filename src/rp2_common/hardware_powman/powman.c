@@ -66,11 +66,19 @@ uint64_t powman_timer_get_ms(void) {
 
 void powman_timer_set_1khz_tick_source_lposc(void) {
 #if PICO_POWMAN_CALIBRATE_LPOSC_FROM_OTP
-    uint16_t* lposc_calib_data = (uint16_t*)OTP_DATA_BASE + OTP_DATA_LPOSC_CALIB_ROW;
-    if (*lposc_calib_data == 0) {
+    uint16_t lposc_calib_data = *((uint16_t*)OTP_DATA_BASE + OTP_DATA_LPOSC_CALIB_ROW);
+    if (lposc_calib_data == 0) { // not programmed
         powman_timer_set_1khz_tick_source_lposc_with_hz(0);
     } else {
-        powman_timer_set_1khz_tick_source_lposc_with_hz(*lposc_calib_data);
+    #if PICO_RP2350
+        // Treat out-of-range OTP values as being 2x the correct value
+        if (lposc_calib_data > 45000) {
+            lposc_calib_data = lposc_calib_data >> 1;
+        } else if (lposc_calib_data < 20000) { // 2x value was more than 16-bits, so handle rollover
+            lposc_calib_data = ((uint32_t)lposc_calib_data | 0x10000) >> 1;
+        }
+    #endif
+        powman_timer_set_1khz_tick_source_lposc_with_hz(lposc_calib_data);
     }
 #else
     powman_timer_set_1khz_tick_source_lposc_with_hz(0);
