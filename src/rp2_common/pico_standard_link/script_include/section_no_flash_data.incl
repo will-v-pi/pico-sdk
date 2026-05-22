@@ -20,6 +20,7 @@ SECTIONS
         *(vtable)
 
         *(.time_critical*)
+        *(.not_in_flash*)
 
         *(.data*)
         *(.sdata*)

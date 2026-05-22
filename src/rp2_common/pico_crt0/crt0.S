@@ -589,10 +589,10 @@ data_cpy_table:
 .word __scratch_y_start__
 .word __scratch_y_end__
 
-#if PICO_TIME_CRITICAL_TEXT_IN_XIP_RAM
-.word __xip_ram_time_critical_text_source__
-.word __xip_ram_time_critical_text_start__
-.word __xip_ram_time_critical_text_end__
+#if PICO_USE_XIP_CACHE_AS_RAM && !PICO_CRT0_NO_DATA_COPY
+.word __xip_ram_text_source__
+.word __xip_ram_text_start__
+.word __xip_ram_text_end__
 #endif
 
 .word 0 // null terminator

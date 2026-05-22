@@ -5,7 +5,7 @@ if (NOT PICO_RP2040)
     target_link_libraries(pico_critical_xip_sram_test PRIVATE hardware_riscv_platform_timer)
 endif()
 pico_set_binary_type(pico_critical_xip_sram_test copy_to_ram)
-pico_use_xip_sram_for_time_critical(pico_critical_xip_sram_test)
+pico_place_time_critical_functions_in_xip_sram(pico_critical_xip_sram_test)
 pico_enable_stdio_usb(pico_critical_xip_sram_test 1) # test with USB as that invokes flash functions
 pico_add_extra_outputs(pico_critical_xip_sram_test)
 
@@ -16,7 +16,7 @@ if (NOT PICO_RP2040)
     target_link_libraries(pico_critical_xip_sram_test_no_flash PRIVATE hardware_riscv_platform_timer)
 endif()
 pico_set_binary_type(pico_critical_xip_sram_test_no_flash no_flash)
-pico_use_xip_sram_for_time_critical(pico_critical_xip_sram_test_no_flash)
+pico_place_time_critical_functions_in_xip_sram(pico_critical_xip_sram_test_no_flash)
 pico_add_extra_outputs(pico_critical_xip_sram_test_no_flash)
 
 if (NOT PICO_RP2040 AND NOT PICO_C_COMPILER_IS_CLANG)

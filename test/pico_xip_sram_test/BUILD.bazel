@@ -28,7 +28,7 @@ cc_binary(
     ],
 )
 
-# pico_use_xip_sram_for_time_critical isn't implemented in Bazel, so manually
+# pico_place_time_critical_functions_in_xip_sram isn't implemented in Bazel, so manually
 # do that function with this linker script
 cc_library(
     name = "pico_critical_xip_sram_test_linker_script",
@@ -62,7 +62,6 @@ extra_copts_for_all_deps(
     testonly = True,
     src = ":pico_critical_xip_sram_test_linked",
     extra_copts = [
-        "-DPICO_TIME_CRITICAL_TEXT_IN_XIP_RAM=1",
         "-DPICO_USE_XIP_CACHE_AS_RAM=1",
     ],
     target_compatible_with = compatible_with_rp2(),

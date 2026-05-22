@@ -32,13 +32,13 @@
  *
  *     static const uint32_t __not_in_flash("my_group_name") an_array[3];
  *
- * The section attribute is `.time_critical.<group>`
+ * The section attribute is `.not_in_flash.<group>`
  *
  * \param group a string suffix to use in the section name to distinguish groups that can be linker
  *              garbage-collected independently
  */
 #ifndef __not_in_flash
-#define __not_in_flash(group) __attribute__((section(".time_critical." group)))
+#define __not_in_flash(group) __attribute__((section(".not_in_flash." group)))
 #endif
 
 /*! \brief Section attribute macro for placement in the SRAM bank 4 (known as "scratch X")
@@ -166,35 +166,41 @@
 #define __in_flash(group) __attribute__((section(".flashdata." group)))
 #endif
 
-/*! \brief Indicates a function should not be stored in flash
+/*! \brief Indicates a function should not run from flash
  *  \ingroup pico_platform
  *
  * Decorates a function name, such that the function will execute from RAM (assuming it is not inlined
- * into a flash function by the compiler)
+ * into a flash function by the compiler) to avoid possible flash latency. By default, this macro is identical
+ * in implementation to `__time_critical_func`, however the semantics are distinct and a `__not_in_flash_func`
+ * can be treated more specially to reduce the overhead when calling such a function.
+ *
+ * For binaries that are not executing from flash (eg copy_to_ram and no_flash), there is the option
+ * to use the \ref`pico_place_not_in_flash_functions_in_xip_sram` CMake function to place them in XIP RAM instead,
+ * as the XIP AHB ports would be otherwise unused.
  *
  * For example a function called my_func taking an int parameter:
  *
  *     void __not_in_flash_func(my_func)(int some_arg) {
  *
- * The function is placed in the `.time_critical.<func_name>` linker section
+ * The function is placed in the `.not_in_flash.text.<func_name>` linker section
  *
  * \see __no_inline_not_in_flash_func
  */
 #ifndef __not_in_flash_func
-#define __not_in_flash_func(func_name) __not_in_flash(__STRING(func_name)) func_name
+#define __not_in_flash_func(func_name) __attribute__((section(".not_in_flash.text." __STRING(func_name)))) func_name
 #endif
 
 /*! \brief Indicates a function is time/latency critical and should not run from flash
  *  \ingroup pico_platform
  *
- * Decorates a function name, such that the function will execute from RAM (assuming it is not inlined
- * into a flash function by the compiler) to avoid possible flash latency. By default, this macro is identical
- * in implementation to `__not_in_flash_func`, however the semantics are distinct and a `__time_critical_func`
- * can be treated more specially to reduce the overhead when calling such a function.
+ * Decorates a function name, such that the function will execute from RAM to avoid possible flash latency,
+ * explicitly marking it as noinline to prevent it being inlined into a flash function by the compiler. By default,
+ * this macro is identical in behavior to `__no_inline_not_in_flash_func, however the semantics are distinct and a
+ * `__time_critical_func` can be treated more specially to reduce the overhead when calling such a function.
  * 
  * For binaries that are not executing from flash (eg copy_to_ram and no_flash), there is the option
- * to use the \ref`pico_use_xip_sram_for_time_critical` CMake function to place them in XIP RAM instead, as the
- * XIP AHB ports would be otherwise unused.
+ * to use the \ref`pico_place_time_critical_functions_in_xip_sram` CMake function to place them in XIP RAM instead,
+ * as the XIP AHB ports would be otherwise unused.
  *
  * For example a function called my_func taking an int parameter:
  *
@@ -208,17 +214,23 @@
 #define __time_critical_func(func_name) __noinline __attribute__((section(".time_critical.text." __STRING(func_name)))) func_name
 #endif
 
-/*! \brief Indicate a function should not be stored in flash and should not be inlined
+/*! \brief Indicates a function should not run from flash and should not be inlined
  *  \ingroup pico_platform
  *
- * Decorates a function name, such that the function will execute from RAM, explicitly marking it as
- * noinline to prevent it being inlined into a flash function by the compiler
+ * Decorates a function name, such that the function will execute from RAM to avoid possible flash latency,
+ * explicitly marking it as noinline to prevent it being inlined into a flash function by the compiler. By default,
+ * this macro is identical in behavior to `__time_critical_func`, however the semantics are distinct and a
+ * `__no_inline_not_in_flash_func` can be treated more specially to reduce the overhead when calling such a function.
+ *
+ * For binaries that are not executing from flash (eg copy_to_ram and no_flash), there is the option
+ * to use the \ref`pico_place_not_in_flash_functions_in_xip_sram` CMake function to place them in XIP RAM instead,
+ * as the XIP AHB ports would be otherwise unused.
  *
  * For example a function called my_func taking an int parameter:
  *
  *     void __no_inline_not_in_flash_func(my_func)(int some_arg) {
  *
- * The function is placed in the `.time_critical.<func_name>` linker section
+ * The function is placed in the `.not_in_flash.text.<func_name>` linker section
  */
 #ifndef __no_inline_not_in_flash_func
 #define __no_inline_not_in_flash_func(func_name) __noinline __not_in_flash_func(func_name)

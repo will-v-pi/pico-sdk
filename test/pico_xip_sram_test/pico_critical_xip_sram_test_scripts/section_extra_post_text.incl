@@ -1,1 +1,1 @@
-INCLUDE "section_time_critical_xip_ram_text.incl"
+INCLUDE "section_xip_ram_text.incl"
