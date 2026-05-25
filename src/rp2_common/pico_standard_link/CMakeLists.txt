@@ -182,35 +182,65 @@ if (NOT TARGET pico_standard_link)
         endif()
     endfunction()
 
-    # pico_set_compile_definition(TARGET DEFINE VALUE)
-    # \brief\ Set a compile definition on a target, guarding against conflicting redefinitions
+    # pico_set_bool_target_property_and_script_variable(TARGET NAME VALUE)
+    # \brief\ Sets a bool target property on TARGET and script variable in the caller's scope, both named NAME,
+    #         using the bool evaluated value of VALUE. Warns against value changing target_property updates on
+    #         existing target_property values.
     #
-    # Equivalent to target_compile_definitions(TARGET PRIVATE DEFINE=VALUE) but tracks the value
-    # as a target property so that a second call with the same DEFINE and the same VALUE is silently
-    # ignored, while a second call with a different VALUE is a fatal error.
-    #
-    # \param\ TARGET The target to add the compile definition to
-    # \param\ DEFINE The preprocessor symbol name
-    # \param\ VALUE  The value to assign to the symbol
-    function(pico_set_compile_definition TARGET DEFINE VALUE)
-        get_target_property(already_set ${TARGET} PICO_TARGET_DEFINITION_${DEFINE})
-        if (already_set MATCHES "NOTFOUND")
-            set_target_properties(${TARGET} PROPERTIES PICO_TARGET_DEFINITION_${DEFINE} ${VALUE})
-            target_compile_definitions(${TARGET} PRIVATE ${DEFINE}=${VALUE})
+    # \param\ TARGET The target_property's associated target.
+    # \param\ NAME The target_property's and the variable's shared name.
+    # \param\ VALUE The value to assign.
+    function(pico_set_bool_target_property_and_script_variable TARGET NAME VALUE)
+        if (VALUE)
+            set(bool_value 1)
         else()
-            if (NOT ${VALUE} STREQUAL ${already_set})
-                message(FATAL_ERROR "Multiple calls to pico_set_compile_definition for ${DEFINE} with different values (${already_set} vs ${VALUE})")
+            set(bool_value 0)
+        endif()
+
+        get_target_property(property_value ${TARGET} ${NAME})
+        if (property_value MATCHES "-NOTFOUND$")
+            set_target_properties(${TARGET} PROPERTIES ${NAME} ${bool_value})
+
+        elseif ((property_value AND NOT bool_value) OR (NOT property_value AND bool_value))
+            message(WARNING "Multiple calls to set_target_properties for ${NAME} with different values (${property_value} vs ${VALUE})")
+            set_target_properties(${TARGET} PROPERTIES ${NAME} ${bool_value})
+        endif()
+
+        set(${NAME} ${bool_value} PARENT_SCOPE)
+    endfunction()
+
+    # pico_resolve_bool_target_property_or_script_variable(TARGET PROPERTY_OR_VARIABLE_NAME)
+    # \brief\ Resolves a bool script variable into the caller's scope based on the currently available
+    #         configuration time target_property and script variable values, with preference for the
+    #         target_property values when both are available.
+    #
+    # \param\ TARGET The target_property's associated target.
+    # \param\ PROPERTY_OR_VARIABLE_NAME The target_property's and the variable's shared name.
+    function(pico_resolve_bool_target_property_or_script_variable TARGET PROPERTY_OR_VARIABLE_NAME)
+        get_target_property(property_value ${TARGET} ${PROPERTY_OR_VARIABLE_NAME})
+        if (property_value MATCHES "-NOTFOUND$")
+            if ("${${PROPERTY_OR_VARIABLE_NAME}}")
+                set(${PROPERTY_OR_VARIABLE_NAME} 1 PARENT_SCOPE)
+            else()
+                set(${PROPERTY_OR_VARIABLE_NAME} 0 PARENT_SCOPE)
+            endif()
+
+        else()
+            if (property_value)
+                set(${PROPERTY_OR_VARIABLE_NAME} 1 PARENT_SCOPE)
+            else()
+                set(${PROPERTY_OR_VARIABLE_NAME} 0 PARENT_SCOPE)
             endif()
         endif()
     endfunction()
 
-    # pico_generate_xip_ram_text_includes(TARGET)
+    # pico_generate_section_xip_ram_text_includes(TARGET)
     # \brief\ Configures the target to generate the "section_xip_ram_text_generated_includes.incl" file
     #         including all the requested linker script input section descriptions.
     #
     # The "section_xip_ram_text_generated_includes.incl" file contents vary depending on the
-    # PICO_USE_XIP_CACHE_AS_RAM compile definition and what's been specified for the three INCLUDES
-    # target properties via their pico_place_*_functions_in_xip_sram config functions:
+    # PICO_USE_XIP_CACHE_AS_RAM target_property and script variable as well as what's been specified for the
+    # three *_INCLUDES target properties via their pico_place_*_functions_in_xip_sram config functions:
     #     PICO_XIP_SRAM_TIME_CRITICAL_TEXT_INCLUDES
     #     PICO_XIP_SRAM_NOT_IN_FLASH_TEXT_INCLUDES
     #     PICO_XIP_SRAM_ALL_TEXT_INCLUDES
@@ -219,29 +249,29 @@ if (NOT TARGET pico_standard_link)
     # in the generated file.
     #
     # When PICO_XIP_SRAM_ALL_TEXT_INCLUDES has been configured, it is assumed that not_in_flash and
-    # time_critical functions should also be placed in XIP SRAM. If their respective INCLUDES target
+    # time_critical functions should also be placed in XIP SRAM. If their respective *_INCLUDES target
     # properties have not been explicitly configured a "*" all-files pattern based input section
     # description is included for them.
     #
     # Otherwise, when PICO_XIP_SRAM_NOT_IN_FLASH_TEXT_INCLUDES has been configured, it is assumed that
-    # time_critical functions should also be placed in XIP SRAM. If their respective INCLUDES target
+    # time_critical functions should also be placed in XIP SRAM. If their respective *_INCLUDES target
     # property has not been explicitly configured a "*" all-files pattern based input section
     # description is included for them.
     #
     # Otherwise, when only PICO_XIP_SRAM_TIME_CRITICAL_TEXT_INCLUDES has been configured, no other
     # function section names are assumed for placement in XIP SRAM.
     #
-    # Based on these cascading rules, starting at zero, a variable number of input section
-    # descriptions are included in the generated file, for the three section name patterns:
+    # Based on these cascading rules, starting at zero, a variable number of input section descriptions
+    # are included in the generated file, corresponding to the three section name patterns:
     #     .time_critical.text*
     #     .not_in_flash.text*
     #     .text*
     #
-    # And finally the generated file is wired up along with the linker and the INCLUDES_SIG properties
-    # to support rebuilds and relinks when the input values change.
+    # Finally the generated file is wired up with the linker and the INCLUDES_SIG properties support
+    # rebuilds and relinks when the input values change.
     #
     # \param\ TARGET The link target whose properties specify the requested input sections.
-    function(pico_generate_xip_ram_text_includes TARGET)
+    function(pico_generate_section_xip_ram_text_includes TARGET)
         get_property(already_added TARGET ${TARGET} PROPERTY PICO_XIP_RAM_TEXT_INCLUDES_GENERATOR_ADDED SET)
         if (already_added)
             return()
@@ -253,20 +283,17 @@ if (NOT TARGET pico_standard_link)
         set(OUTPUT_FILE_NAME "section_xip_ram_text_generated_includes.incl")
         set(FULL_OUTPUT_FILE "${GENERATED_DIR}/${OUTPUT_FILE_NAME}")
 
-        # extract truthy boolean value from compile definitions
-        string(CONCAT PICO_USE_XIP_CACHE_AS_RAM
-                "$<OR:"
-                    "$<IN_LIST:PICO_USE_XIP_CACHE_AS_RAM,$<TARGET_PROPERTY:${TARGET},COMPILE_DEFINITIONS>>,"
-                    "$<IN_LIST:PICO_USE_XIP_CACHE_AS_RAM=1,$<TARGET_PROPERTY:${TARGET},COMPILE_DEFINITIONS>>,"
-                    "$<IN_LIST:PICO_USE_XIP_CACHE_AS_RAM=ON,$<TARGET_PROPERTY:${TARGET},COMPILE_DEFINITIONS>>,"
-                    "$<IN_LIST:PICO_USE_XIP_CACHE_AS_RAM=TRUE,$<TARGET_PROPERTY:${TARGET},COMPILE_DEFINITIONS>>,"
-                    "$<IN_LIST:PICO_USE_XIP_CACHE_AS_RAM=YES,$<TARGET_PROPERTY:${TARGET},COMPILE_DEFINITIONS>>,"
-                    "$<IN_LIST:PICO_USE_XIP_CACHE_AS_RAM=Y,$<TARGET_PROPERTY:${TARGET},COMPILE_DEFINITIONS>>"
-                ">")
+        # set the (configuration time) value of PICO_USE_XIP_CACHE_AS_RAM in a local variable
+        pico_resolve_bool_target_property_or_script_variable(${TARGET} PICO_USE_XIP_CACHE_AS_RAM)
 
-        set(TIME_CRITICAL_DECLARED "$<NOT:$<STREQUAL:$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_TIME_CRITICAL_TEXT_INCLUDES>,>>")
-        set(NOT_IN_FLASH_DECLARED  "$<NOT:$<STREQUAL:$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_NOT_IN_FLASH_TEXT_INCLUDES>,>>")
-        set(ALL_DECLARED           "$<NOT:$<STREQUAL:$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_ALL_TEXT_INCLUDES>,>>")
+        # late (compile time) eval of the PICO_USE_XIP_CACHE_AS_RAM target_property, if not available fall back to
+        # the current (configuration time) value of the PICO_USE_XIP_CACHE_AS_RAM script variable, mirrors the
+        # GENEX used for the PICO_USE_XIP_CACHE_AS_RAM target_compile_definition set on the pico_standard_link target.
+        set(USE_XIP_CACHE_AS_RAM "$<IF:$<STREQUAL:,$<TARGET_PROPERTY:${TARGET},PICO_USE_XIP_CACHE_AS_RAM>>,$<BOOL:${PICO_USE_XIP_CACHE_AS_RAM}>,$<BOOL:$<TARGET_PROPERTY:${TARGET},PICO_USE_XIP_CACHE_AS_RAM>>>")
+
+        set(TIME_CRITICAL_DECLARED "$<NOT:$<STREQUAL:,$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_TIME_CRITICAL_TEXT_INCLUDES>>>")
+        set(NOT_IN_FLASH_DECLARED  "$<NOT:$<STREQUAL:,$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_NOT_IN_FLASH_TEXT_INCLUDES>>>")
+        set(ALL_DECLARED           "$<NOT:$<STREQUAL:,$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_ALL_TEXT_INCLUDES>>>")
 
         # Cascading Include groups: (time_critical), (time_critical && not_in_flash), (time_critical && not_in_flash && all)
         set(COND_TIME_CRITICAL "$<OR:${TIME_CRITICAL_DECLARED},${NOT_IN_FLASH_DECLARED},${ALL_DECLARED}>")
@@ -278,19 +305,19 @@ if (NOT TARGET pico_standard_link)
         set(INCLUDE_ALL_TEXT               "    *(.text*)\n")
 
         # assemble, clean-up, and flatten
-        string(CONCAT PICO_XIP_RAM_TEXT_INCLUDES
+        string(CONCAT XIP_RAM_TEXT_INCLUDES
                 "/* Generated by pico-sdk: object file includes for the linker .xip_ram_text section */\n"
-                "$<IF:$<AND:${PICO_USE_XIP_CACHE_AS_RAM},${COND_TIME_CRITICAL}>,$<IF:${TIME_CRITICAL_DECLARED},$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_TIME_CRITICAL_TEXT_INCLUDES>,${INCLUDE_ALL_TIME_CRITICAL_TEXT}>,\n>"
-                "$<IF:$<AND:${PICO_USE_XIP_CACHE_AS_RAM},${COND_NOT_IN_FLASH}>,$<IF:${NOT_IN_FLASH_DECLARED},$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_NOT_IN_FLASH_TEXT_INCLUDES>,${INCLUDE_ALL_NOT_IN_FLASH_TEXT}>,\n>"
-                "$<IF:$<AND:${PICO_USE_XIP_CACHE_AS_RAM},${COND_ALL}>,$<IF:${ALL_DECLARED},$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_ALL_TEXT_INCLUDES>,${INCLUDE_ALL_TEXT}>,\n>"
+                "$<IF:$<AND:${USE_XIP_CACHE_AS_RAM},${COND_TIME_CRITICAL}>,$<IF:${TIME_CRITICAL_DECLARED},$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_TIME_CRITICAL_TEXT_INCLUDES>,${INCLUDE_ALL_TIME_CRITICAL_TEXT}>,\n>"
+                "$<IF:$<AND:${USE_XIP_CACHE_AS_RAM},${COND_NOT_IN_FLASH}>,$<IF:${NOT_IN_FLASH_DECLARED},$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_NOT_IN_FLASH_TEXT_INCLUDES>,${INCLUDE_ALL_NOT_IN_FLASH_TEXT}>,\n>"
+                "$<IF:$<AND:${USE_XIP_CACHE_AS_RAM},${COND_ALL}>,$<IF:${ALL_DECLARED},$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_ALL_TEXT_INCLUDES>,${INCLUDE_ALL_TEXT}>,\n>"
         )
 
         file(MAKE_DIRECTORY "${GENERATED_DIR}")
-        file(GENERATE OUTPUT "${FULL_OUTPUT_FILE}" CONTENT "${PICO_XIP_RAM_TEXT_INCLUDES}")
+        file(GENERATE OUTPUT "${FULL_OUTPUT_FILE}" CONTENT "${XIP_RAM_TEXT_INCLUDES}")
         set_target_properties(${TARGET} PROPERTIES LINK_DEPENDS "${FULL_OUTPUT_FILE}")
 
         pico_add_linker_script_override_path(${TARGET} "${GENERATED_DIR}")
-        # force a re-link if any of the pico_include_*_functions_in_xip_sram() function's ARGS values changed
+        # force a re-link if any of the pico_place_*_functions_in_xip_sram() function's ARGS values changed
         target_link_options(${TARGET} PRIVATE
                 "-Wl,--defsym=PICO_XIP_TRACK_TC_$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_TIME_CRITICAL_TEXT_INCLUDES_SIG>=0"
                 "-Wl,--defsym=PICO_XIP_TRACK_NF_$<TARGET_PROPERTY:${TARGET},PICO_XIP_SRAM_NOT_IN_FLASH_TEXT_INCLUDES_SIG>=0"
@@ -306,13 +333,13 @@ if (NOT TARGET pico_standard_link)
     # section descriptions will be appended to the ${INPUT_SECTION_DESCRIPTIONS} property. An effort is
     # made to avoid appending duplicate descriptions.
     #
-    # In addition to the ${INPUT_SECTION_DESCRIPTIONS} property, this function will also maintains a
+    # In addition to the ${INPUT_SECTION_DESCRIPTIONS} property, this function also maintains a
     # signature property ${INPUT_SECTION_DESCRIPTIONS}_SIG with its value tracking the base property.
     #
-    # \param\ TARGET The target of the properties being populated
-    # \param\ INPUT_SECTION_DESCRIPTIONS The name of the target property accumulating linker script
+    # \param\ TARGET The target of the target_properties being populated
+    # \param\ INPUT_SECTION_DESCRIPTIONS The name of the target_property accumulating the linker script
     #         input section descriptions.
-    # \param\ SECTION_NAME_PATTERN The input section name pattern used for all linker script input
+    # \param\ SECTION_NAME_PATTERN The input section name pattern used for all the linker script input
     #         section descriptions
     # \param\ FILENAMES An optional user specified list of object (or archive) filenames used as the
     #         basis for generating file specific linker script input section file patterns. If none are
@@ -321,7 +348,7 @@ if (NOT TARGET pico_standard_link)
         get_target_property(existing_section_descriptions ${TARGET} ${INPUT_SECTION_DESCRIPTIONS})
 
         # generate new section_descriptions content
-        if ("${ARGN}" STREQUAL "")
+        if (NOT ARGN)
             # if no FILE_NAMES specified, default to the "*" any file pattern
             set(section_descriptions "    *(${SECTION_NAME_PATTERN})\n")
 
@@ -363,10 +390,23 @@ if (NOT TARGET pico_standard_link)
     #
     # Configures the target to place functions marked __time_critical_func() into XIP SRAM rather than
     # normal SRAM, as it has dedicated AHB ports which are otherwise unused in no_flash and copy_to_ram
-    # binaries. This sets PICO_USE_XIP_CACHE_AS_RAM=1, composes the required linker script input
-    # section descriptions, and populates the ".xip_ram_text" linker script output section with those
-    # descriptions using the "section_xip_ram_text_generated_includes.incl" file generated via
-    # pico_generate_xip_ram_text_includes().
+    # binaries. This sets the target_property PICO_USE_XIP_CACHE_AS_RAM=1, composes the required linker
+    # script input section descriptions, and populates the ".xip_ram_text" linker script output section
+    # with those descriptions using the "section_xip_ram_text_generated_includes.incl" file generated via
+    # pico_generate_section_xip_ram_text_includes().
+    #
+    # Example 1. Placing the ".time_critical.text*" sections of all object files into XIP SRAM:
+    #
+    # pico_place_time_critical_functions_in_xip_sram(myTarget)
+    #
+    # Example 2. Placing the ".time_critical.text*" sections of only the specified objects with filenames
+    # matching main.c.o, other.cpp.o, or libxyz.a into XIP SRAM:
+    #
+    # pico_place_time_critical_functions_in_xip_sram(myTarget
+    #         main.c.o
+    #         other.cpp.o
+    #         libxyz.a
+    # )
     #
     # This function may be invoked multiple times to specify additional OBJECT_FILES for the generated
     # input section descriptions.
@@ -381,9 +421,9 @@ if (NOT TARGET pico_standard_link)
     #         ".time_critical.text*" section names. If none are specified the "*" all-files pattern is
     #         assumed.
     function(pico_place_time_critical_functions_in_xip_sram TARGET)
-        pico_set_compile_definition(${TARGET} PICO_USE_XIP_CACHE_AS_RAM 1) # may be set elsewhere too
         pico_add_linker_input_section_descriptions(${TARGET} PICO_XIP_SRAM_TIME_CRITICAL_TEXT_INCLUDES ".time_critical.text*" "${ARGN}")
-        pico_generate_xip_ram_text_includes(${TARGET})
+        pico_set_bool_target_property_and_script_variable(${TARGET} PICO_USE_XIP_CACHE_AS_RAM 1)
+        pico_generate_section_xip_ram_text_includes(${TARGET})
     endfunction()
 
     # pico_place_not_in_flash_functions_in_xip_sram(TARGET [OBJECT_FILES])
@@ -391,16 +431,30 @@ if (NOT TARGET pico_standard_link)
     #
     # Configures the target to place functions marked __not_in_flash_func() into XIP SRAM rather than
     # normal SRAM, as it has dedicated AHB ports which are otherwise unused in no_flash and copy_to_ram
-    # binaries. This sets PICO_USE_XIP_CACHE_AS_RAM=1, composes the required linker script input
-    # section descriptions, and populates the ".xip_ram_text" linker script output section with those
-    # descriptions using the "section_xip_ram_text_generated_includes.incl" file generated via
-    # pico_generate_xip_ram_text_includes().
+    # binaries. This sets the target_property PICO_USE_XIP_CACHE_AS_RAM=1, composes the required linker
+    # script input section descriptions, and populates the ".xip_ram_text" linker script output section
+    # with those descriptions using the "section_xip_ram_text_generated_includes.incl" file generated via
+    # pico_generate_section_xip_ram_text_includes().
+    #
+    # Example 1. Placing the ".not_in_flash.text*" sections of all object files into XIP SRAM:
+    #
+    # pico_place_not_in_flash_functions_in_xip_sram(myTarget)
+    #
+    # Example 2. Placing the ".not_in_flash.text*" sections of only the specified objects with filenames
+    # matching main.c.o, other.cpp.o, or libxyz.a into XIP SRAM:
+    #
+    # pico_place_not_in_flash_functions_in_xip_sram(myTarget
+    #         main.c.o
+    #         other.cpp.o
+    #         libxyz.a
+    # )
     #
     # This function may be invoked multiple times to specify additional OBJECT_FILES for the generated input
     # section descriptions. By default functions marked __time_critical_func() will also be placed into
-    # XIP SRAM when this function is used. That behavior may be overridden by specifying a dummy filename in
-    # a call to the pico_place_time_critical_functions_in_xip_sram() function and avoiding its default "*"
-    # all-files matching pattern.
+    # XIP SRAM when this function is used, as if pico_place_time_critical_functions_in_xip_sram() had been
+    # called without any OBJECT_FILES specified. That behavior may be overridden by specifying a dummy filename
+    # in an explicit call to the pico_place_time_critical_functions_in_xip_sram() function thus avoiding this
+    # default "*" all-files matching pattern.
     #
     # Using this function with flash binaries is not recommended, as their performance depends
     # critically on XIP hardware being used to cache the instructions stored in flash, and this function
@@ -412,26 +466,39 @@ if (NOT TARGET pico_standard_link)
     #         ".not_in_flash.text*" section names. If none are specified the "*" all-files pattern is
     #         assumed.
     function(pico_place_not_in_flash_functions_in_xip_sram TARGET)
-        pico_set_compile_definition(${TARGET} PICO_USE_XIP_CACHE_AS_RAM 1) # may be set elsewhere too
         pico_add_linker_input_section_descriptions(${TARGET} PICO_XIP_SRAM_NOT_IN_FLASH_TEXT_INCLUDES ".not_in_flash.text*" "${ARGN}")
-        pico_generate_xip_ram_text_includes(${TARGET})
+        pico_set_bool_target_property_and_script_variable(${TARGET} PICO_USE_XIP_CACHE_AS_RAM 1)
+        pico_generate_section_xip_ram_text_includes(${TARGET})
     endfunction()
 
     # pico_place_all_functions_in_xip_sram(TARGET [OBJECT_FILES])
     # \brief\ Places ".text*", ".not_in_flash.text*", and ".time_critical.text*" sections of the target into XIP SRAM.
     #
     # Configures the target to place all functions into XIP SRAM rather than normal SRAM, as it has
-    # dedicated AHB ports which are otherwise unused in no_flash and copy_to_ram binaries. This sets
-    # PICO_USE_XIP_CACHE_AS_RAM=1, composes the required linker script input section descriptions, and
-    # populates the ".xip_ram_text" linker script output section with those descriptions using the
-    # "section_xip_ram_text_generated_includes.incl" file generated via pico_generate_xip_ram_text_includes().
+    # dedicated AHB ports which are otherwise unused in no_flash and copy_to_ram binaries. This sets the
+    # target_property PICO_USE_XIP_CACHE_AS_RAM=1, composes the required linker script input section descriptions,
+    # and populates the ".xip_ram_text" linker script output section with those descriptions using the
+    # "section_xip_ram_text_generated_includes.incl" file generated via pico_generate_section_xip_ram_text_includes().
+    #
+    # Example 1. Placing the ".text*" sections of all object files into XIP SRAM:
+    #
+    # pico_place_all_functions_in_xip_sram(myTarget)
+    #
+    # Example 2. Placing the ".text*" sections of only the specified objects with filenames
+    # matching main.c.o, other.cpp.o, or libxyz.a into XIP SRAM:
+    #
+    # pico_place_all_functions_in_xip_sram(myTarget
+    #         main.c.o
+    #         other.cpp.o
+    #         libxyz.a
+    # )
     #
     # This function may be invoked multiple times to specify additional OBJECT_FILES for the generated input
-    # section descriptions. By default functions marked __not_in_flash_func() or __time_critical_func() will
-    # also be placed into XIP SRAM when this function is used. That behavior may be overridden by specifying a
-    # dummy filename in a call to the pico_place_not_in_flash_functions_in_xip_sram() function or the
-    # pico_place_time_critical_functions_in_xip_sram() function respectively and avoiding their default "*"
-    # all-files matching pattern.
+    # section descriptions. By default functions marked __not_in_flash_func() or __time_critical_func() will also
+    # be placed into XIP SRAM when this function is used, as if pico_place_time_critical_functions_in_xip_sram()
+    # and pico_place_not_in_flash_functions_in_xip_sram() had both been called without any OBJECT_FILES specified.
+    # That behavior may be overridden by specifying a dummy filename in an explicit call to either function thus
+    # avoiding their default "*" all-files matching pattern.
     #
     # Using this function with flash binaries is not recommended, as their performance depends
     # critically on XIP hardware being used to cache the instructions stored in flash, and this function
@@ -442,9 +509,9 @@ if (NOT TARGET pico_standard_link)
     #         basis for generating file specific linker script input section file patterns for the
     #         ".text*" section names. If none are specified the "*" all-files pattern is assumed.
     function(pico_place_all_functions_in_xip_sram TARGET)
-        pico_set_compile_definition(${TARGET} PICO_USE_XIP_CACHE_AS_RAM 1) # may be set elsewhere too
         pico_add_linker_input_section_descriptions(${TARGET} PICO_XIP_SRAM_ALL_TEXT_INCLUDES ".text*" "${ARGN}")
-        pico_generate_xip_ram_text_includes(${TARGET})
+        pico_set_bool_target_property_and_script_variable(${TARGET} PICO_USE_XIP_CACHE_AS_RAM 1)
+        pico_generate_section_xip_ram_text_includes(${TARGET})
     endfunction()
 
     # PICO_CMAKE_CONFIG: PICO_DEFAULT_BINARY_TYPE, The default binary type to use, type=string, default=default, group=build
@@ -549,6 +616,9 @@ if (NOT TARGET pico_standard_link)
     # PICO_XIP_RAM will be set based on PICO_TARGET_BUILD_TYPE target property being in XIP_RAM_BINARY_TYPES if set, otherwise to the value of the PICO_XIP_RAM cmake variable unless PICO_TARGET_TYPE is set to something else
     # PICO_BUILD_DEFINE: PICO_XIP_RAM, whether this is a 'xip_ram' build, type=bool, default=0, but dependent on CMake options, group=pico_standard_link
     target_compile_definitions(pico_standard_link INTERFACE PICO_XIP_RAM=$<IF:$<IN_LIST:$<TARGET_PROPERTY:PICO_TARGET_BINARY_TYPE>,${XIP_RAM_BINARY_TYPES}>,1,$<AND:$<BOOL:${PICO_XIP_RAM}>,$<STREQUAL:,$<TARGET_PROPERTY:PICO_TARGET_BINARY_TYPE>>>>)
+
+    # PICO_USE_XIP_CACHE_AS_RAM will be set based on PICO_USE_XIP_CACHE_AS_RAM target property if set, otherwise to the value of the PICO_USE_XIP_CACHE_AS_RAM cmake variable.
+    target_compile_definitions(pico_standard_link INTERFACE PICO_USE_XIP_CACHE_AS_RAM=$<IF:$<STREQUAL:,$<TARGET_PROPERTY:PICO_USE_XIP_CACHE_AS_RAM>>,$<BOOL:${PICO_USE_XIP_CACHE_AS_RAM}>,$<BOOL:$<TARGET_PROPERTY:PICO_USE_XIP_CACHE_AS_RAM>>>)
 
     target_compile_definitions(pico_standard_link INTERFACE PICO_CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
     if (PICO_DEOPTIMIZED_DEBUG AND "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")

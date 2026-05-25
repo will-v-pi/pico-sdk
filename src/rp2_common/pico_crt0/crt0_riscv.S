@@ -34,10 +34,6 @@
 #define PICO_CRT0_NO_DATA_COPY PICO_NO_FLASH
 #endif
 
-#ifndef PICO_USE_XIP_CACHE_AS_RAM
-#define PICO_USE_XIP_CACHE_AS_RAM PICO_XIP_RAM
-#endif
-
 // If vectors are in RAM, we put them in the .data section, so that they are
 // preloaded by _reset_handler (assuming this is not a loaded-in-place
 // binary).
@@ -435,7 +431,7 @@ data_cpy_table:
 .word __scratch_y_start__
 .word __scratch_y_end__
 
-#if PICO_USE_XIP_CACHE_AS_RAM && !PICO_CRT0_NO_DATA_COPY
+#if PICO_USE_XIP_CACHE_AS_RAM
 .word __xip_ram_text_source__
 .word __xip_ram_text_start__
 .word __xip_ram_text_end__

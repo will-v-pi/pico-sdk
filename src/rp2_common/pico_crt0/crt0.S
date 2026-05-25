@@ -21,11 +21,6 @@
 #define PICO_CRT0_NEAR_CALLS 0
 #endif
 
-// PICO_CONFIG: PICO_USE_XIP_CACHE_AS_RAM, Whether to use xip cache as ram, default=PICO_XIP_RAM, type=bool, group=pico_crt0
-#ifndef PICO_USE_XIP_CACHE_AS_RAM
-#define PICO_USE_XIP_CACHE_AS_RAM PICO_XIP_RAM
-#endif
-
 // PICO_CONFIG: PICO_CRT0_NO_DATA_COPY, Whether crt0 should perform the data copies - usually copying from flash into sram, default=1 for no_flash builds, 0 otherwise, type=bool, group=pico_crt0
 #ifndef PICO_CRT0_NO_DATA_COPY
 #define PICO_CRT0_NO_DATA_COPY PICO_NO_FLASH
@@ -589,7 +584,7 @@ data_cpy_table:
 .word __scratch_y_start__
 .word __scratch_y_end__
 
-#if PICO_USE_XIP_CACHE_AS_RAM && !PICO_CRT0_NO_DATA_COPY
+#if PICO_USE_XIP_CACHE_AS_RAM
 .word __xip_ram_text_source__
 .word __xip_ram_text_start__
 .word __xip_ram_text_end__
