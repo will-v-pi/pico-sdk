@@ -23,6 +23,7 @@ INCLUDE "memmap_default.incl"
  *         ├── sections_default_text.incl                rp2040/pico_platform
  *         │   ├── section_flash_begin.incl              rp2_common/pico_standard_link
  *         │   ├── section_boot2.incl                    rp2040/pico_platform
+ *         │   ├── section_flashtext.incl                rp2_common/pico_standard_link
  *         │   ├── section_xip_ram_text.incl             rp2_common/pico_standard_link
  *         │   │   └── section_xip_ram_text_generated_includes.incl  rp2_common/pico_standard_link
  *         │   ├── section_default_text.incl             rp2_common/pico_standard_link

@@ -19,7 +19,7 @@ INCLUDE "memmap_copy_to_ram.incl"
  *     └── sections_copy_to_ram.incl                     rp2_common/pico_standard_link
  *         ├── sections_copy_to_ram_text.incl            rp2_common/pico_standard_link
  *         │   ├── section_flash_begin.incl              rp2_common/pico_standard_link
- *         │   ├── section_copy_to_ram_flashtext.incl    rp2_common/pico_standard_link
+ *         │   ├── section_flashtext.incl                rp2_common/pico_standard_link
  *         │   ├── section_boot2.incl                    rp2_common/pico_standard_link
  *         │   ├── section_copy_to_ram_rodata.incl       rp2_common/pico_standard_link
  *         │   ├── sections_arm_ex.incl                  rp2_common/pico_standard_link

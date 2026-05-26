@@ -17,6 +17,7 @@ INCLUDE "memmap_no_flash.incl"
  *     ├── memory_aliases_no_flash.incl                  rp2_common/pico_standard_link
  *     └── sections_no_flash.incl                        rp2_common/pico_standard_link
  *         ├── sections_no_flash_text.incl               rp2_common/pico_standard_link
+ *         │   ├── section_no_flash_entrypoint.incl      rp2_common/pico_standard_link
  *         │   ├── section_xip_ram_text.incl             rp2_common/pico_standard_link
  *         │   │   └── section_xip_ram_text_generated_includes.incl  rp2_common/pico_standard_link
  *         │   ├── section_no_flash_text.incl            rp2_common/pico_standard_link

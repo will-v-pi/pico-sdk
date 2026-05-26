@@ -166,6 +166,22 @@
 #define __in_flash(group) __attribute__((section(".flashdata." group)))
 #endif
 
+/*! \brief Indicates a function should be run from RAM explicitly and should not be inlined
+ *  \ingroup pico_platform
+ *
+ * Decorates a function name, such that the function will execute from RAM to avoid possible flash latency,
+ * explicitly marking it as noinline to prevent it being inlined into a flash function by the compiler.
+ *
+ * For example a function called my_func taking an int parameter:
+ *
+ *     void __in_ram_func(my_func)(int some_arg) {
+ *
+ * The function is placed in the `.not_in_flash.<func_name>` linker section
+ */
+#ifndef __in_ram_func
+#define __in_ram_func(func_name) __noinline __attribute__((section(".not_in_flash." __STRING(func_name)))) func_name
+#endif
+
 /*! \brief Indicates a function should not run from flash
  *  \ingroup pico_platform
  *

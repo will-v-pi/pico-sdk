@@ -39,7 +39,7 @@
 static uint32_t boot2_copyout[BOOT2_SIZE_WORDS];
 static bool boot2_copyout_valid = false;
 
-static void __no_inline_not_in_flash_func(flash_init_boot2_copyout)(void) {
+static void __in_ram_func(flash_init_boot2_copyout)(void) {
     if (boot2_copyout_valid)
         return;
     // todo we may want the option of boot2 just being a free function in
@@ -56,15 +56,15 @@ static void __no_inline_not_in_flash_func(flash_init_boot2_copyout)(void) {
 }
 
 
-static void __no_inline_not_in_flash_func(flash_enable_xip_via_boot2)(void) {
+static void __in_ram_func(flash_enable_xip_via_boot2)(void) {
     ((void (*)(void))((intptr_t)boot2_copyout+1))();
 }
 
 #else
 
-static void __no_inline_not_in_flash_func(flash_init_boot2_copyout)(void) {}
+static void __in_ram_func(flash_init_boot2_copyout)(void) {}
 
-static void __no_inline_not_in_flash_func(flash_enable_xip_via_boot2)(void) {
+static void __in_ram_func(flash_enable_xip_via_boot2)(void) {
     // Set up XIP for 03h read on bus access (slow but generic)
     rom_flash_enter_cmd_xip_fn flash_enter_cmd_xip_func = (rom_flash_enter_cmd_xip_fn)rom_func_lookup_inline(ROM_FUNC_FLASH_ENTER_CMD_XIP);
     assert(flash_enter_cmd_xip_func);
@@ -109,13 +109,13 @@ typedef struct flash_rp2350_qmi_save_state {
     uint32_t rfmt;
 } flash_rp2350_qmi_save_state_t;
 
-static void __no_inline_not_in_flash_func(flash_rp2350_save_qmi_cs1)(flash_rp2350_qmi_save_state_t *state) {
+static void __in_ram_func(flash_rp2350_save_qmi_cs1)(flash_rp2350_qmi_save_state_t *state) {
     state->timing = qmi_hw->m[1].timing;
     state->rcmd = qmi_hw->m[1].rcmd;
     state->rfmt = qmi_hw->m[1].rfmt;
 }
 
-static void __no_inline_not_in_flash_func(flash_rp2350_restore_qmi_cs1)(const flash_rp2350_qmi_save_state_t *state) {
+static void __in_ram_func(flash_rp2350_restore_qmi_cs1)(const flash_rp2350_qmi_save_state_t *state) {
     if (qmi_cs1_setup_function != NULL) {
         qmi_cs1_setup_function();
     } else if (flash_devinfo_get_cs_size(1) == FLASH_DEVINFO_SIZE_NONE) {
@@ -149,7 +149,7 @@ typedef struct flash_hardware_save_state {
     uint32_t qspi_pads[count_of(pads_qspi_hw->io)];
 } flash_hardware_save_state_t;
 
-static void __no_inline_not_in_flash_func(flash_save_hardware_state)(flash_hardware_save_state_t *state) {
+static void __in_ram_func(flash_save_hardware_state)(flash_hardware_save_state_t *state) {
     // Commit any pending writes to external RAM, to avoid losing them in a subsequent flush:
     xip_cache_clean_all();
     for (size_t i = 0; i < count_of(pads_qspi_hw->io); ++i) {
@@ -162,7 +162,7 @@ static void __no_inline_not_in_flash_func(flash_save_hardware_state)(flash_hardw
 #endif
 }
 
-static void __no_inline_not_in_flash_func(flash_restore_hardware_state)(flash_hardware_save_state_t *state) {
+static void __in_ram_func(flash_restore_hardware_state)(flash_hardware_save_state_t *state) {
     for (size_t i = 0; i < count_of(pads_qspi_hw->io); ++i) {
         pads_qspi_hw->io[i] = state->qspi_pads[i];
     }
@@ -177,7 +177,7 @@ static void __no_inline_not_in_flash_func(flash_restore_hardware_state)(flash_ha
 //-----------------------------------------------------------------------------
 // Actual flash programming shims (work whether or not PICO_NO_FLASH==1)
 
-void __no_inline_not_in_flash_func(flash_start_xip)(void) {
+void __in_ram_func(flash_start_xip)(void) {
     rom_connect_internal_flash_fn connect_internal_flash_func = (rom_connect_internal_flash_fn)rom_func_lookup_inline(ROM_FUNC_CONNECT_INTERNAL_FLASH);
     rom_flash_exit_xip_fn flash_exit_xip_func = (rom_flash_exit_xip_fn)rom_func_lookup_inline(ROM_FUNC_FLASH_EXIT_XIP);
     rom_flash_flush_cache_fn flash_flush_cache_func = (rom_flash_flush_cache_fn)rom_func_lookup_inline(ROM_FUNC_FLASH_FLUSH_CACHE);
@@ -208,7 +208,7 @@ void __no_inline_not_in_flash_func(flash_start_xip)(void) {
 #endif
 }
 
-void __no_inline_not_in_flash_func(flash_range_erase)(uint32_t flash_offs, size_t count) {
+void __in_ram_func(flash_range_erase)(uint32_t flash_offs, size_t count) {
 #ifdef PICO_FLASH_SIZE_BYTES
     hard_assert(flash_offs + count <= PICO_FLASH_SIZE_BYTES);
 #endif
@@ -234,12 +234,12 @@ void __no_inline_not_in_flash_func(flash_range_erase)(uint32_t flash_offs, size_
     flash_restore_hardware_state(&state);
 }
 
-void __no_inline_not_in_flash_func(flash_flush_cache)(void) {
+void __in_ram_func(flash_flush_cache)(void) {
     rom_flash_flush_cache_fn flash_flush_cache_func = (rom_flash_flush_cache_fn)rom_func_lookup_inline(ROM_FUNC_FLASH_FLUSH_CACHE);
     flash_flush_cache_func();
 }
 
-void __no_inline_not_in_flash_func(flash_range_program)(uint32_t flash_offs, const uint8_t *data, size_t count) {
+void __in_ram_func(flash_range_program)(uint32_t flash_offs, const uint8_t *data, size_t count) {
 #ifdef PICO_FLASH_SIZE_BYTES
     hard_assert(flash_offs + count <= PICO_FLASH_SIZE_BYTES);
 #endif
@@ -290,7 +290,7 @@ static __force_inline void flash_cs_force(bool high, uint8_t cs) {
 #endif
 }
 
-void __no_inline_not_in_flash_func(flash_do_cmd_cs)(const uint8_t *txbuf, uint8_t *rxbuf, size_t count, uint cs) {
+void __in_ram_func(flash_do_cmd_cs)(const uint8_t *txbuf, uint8_t *rxbuf, size_t count, uint cs) {
     rom_connect_internal_flash_fn connect_internal_flash_func = (rom_connect_internal_flash_fn)rom_func_lookup_inline(ROM_FUNC_CONNECT_INTERNAL_FLASH);
     rom_flash_exit_xip_fn flash_exit_xip_func = (rom_flash_exit_xip_fn)rom_func_lookup_inline(ROM_FUNC_FLASH_EXIT_XIP);
     rom_flash_flush_cache_fn flash_flush_cache_func = (rom_flash_flush_cache_fn)rom_func_lookup_inline(ROM_FUNC_FLASH_FLUSH_CACHE);
@@ -370,7 +370,7 @@ void flash_get_unique_id(uint8_t *id_out) {
 #if !PICO_RP2040
 // This is a static symbol because the layout of FLASH_DEVINFO is liable to change from device to
 // device, so fields must have getters/setters.
-static io_rw_16 * __no_inline_not_in_flash_func(flash_devinfo_ptr)(void) {
+static io_rw_16 * __in_ram_func(flash_devinfo_ptr)(void) {
     // Note the lookup returns a pointer to a 32-bit pointer literal in the ROM
     io_rw_16 **p = (io_rw_16 **) rom_data_lookup_inline(ROM_DATA_FLASH_DEVINFO16_PTR);
     assert(p);
@@ -390,7 +390,7 @@ static void flash_devinfo_update_field(uint16_t wdata, uint16_t mask) {
 
 // This is a RAM function because may be called during flash programming to enable save/restore of
 // QMI window 1 registers on RP2350:
-flash_devinfo_size_t __no_inline_not_in_flash_func(flash_devinfo_get_cs_size)(uint cs) {
+flash_devinfo_size_t __in_ram_func(flash_devinfo_get_cs_size)(uint cs) {
     invalid_params_if(HARDWARE_FLASH, cs > 1);
     io_ro_16 *devinfo = (io_ro_16 *) flash_devinfo_ptr();
     if (cs == 0u) {

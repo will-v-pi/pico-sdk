@@ -2,7 +2,7 @@
 
 INCLUDE "section_flash_begin.incl"
 INCLUDE "section_boot2.incl"
-INCLUDE "section_copy_to_ram_flashtext.incl"
+INCLUDE "section_flashtext.incl"
 INCLUDE "section_copy_to_ram_rodata.incl"
 INCLUDE "sections_arm_ex.incl"
 INCLUDE "section_binary_info.incl"
