@@ -159,6 +159,22 @@ int main(void) {
     puts("Hello Everything!");
     puts("Hello Everything2!");
 
+    rp2_chip_t chip = rp2_get_chip();
+    switch (chip) {
+        case chip_rp2040_b0:
+        case chip_rp2040_b1:
+        case chip_rp2040_b2:
+            puts("I'm an RP2040!");
+            break;
+        case chip_rp2350_a2:
+        case chip_rp2350_a3:
+        case chip_rp2350_a4:
+            puts("I'm an RP2350!");
+            break;
+        default:
+            printf("I don't know what I am :( (chip is %06x)\n", chip);
+    }
+
     printf("main at %p\n", (void *)main);
     static uint x[2];
     printf("x[0] = %p, x[1] = %p\n", x, x+1);

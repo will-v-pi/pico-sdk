@@ -73,6 +73,70 @@ bool running_in_sim(void);
  */
 static __force_inline void tight_loop_contents(void) {}
 
+/*! \brief RP2 chip version enum
+ *  \ingroup pico_platform
+ * 
+ * Each value is formed of the following bits:
+ * bits 0-7: Chip version in ROM (\see rp2_get_rom_chip_version)
+ * bits 8-15: Chip revision (\see rp2_get_chip_revision)
+ * bits 16-23: ROM version (\see rp2_get_rom_version)
+ */
+typedef enum rp2_chip {
+    chip_rp2040_b0 = 0x010101,
+    chip_rp2040_b1 = 0x020101,
+    chip_rp2040_b2 = 0x030201,
+    chip_rp2350_a2 = 0x020202,
+    chip_rp2350_a3 = 0x030302,
+    chip_rp2350_a4 = 0x040302,
+} rp2_chip_t;
+
+/*! \brief Get RP2 bootrom version number
+ *  \ingroup pico_platform
+ *
+ * Reads the 1 byte bootrom version from 0x13
+ * 
+ * \return the bootrom version
+ */
+uint8_t rp2_get_rom_version(void);
+
+/*! \brief Get RP2 bootrom magic
+ *  \ingroup pico_platform
+ *
+ * Reads the 3 byte bootrom magic from 0x10, which should be `M`,`u` followed by the chip version
+ * (0x01 for RP2040, 0x02 for RP2350)
+ *
+ * \return the bootrom magic
+ */
+uint32_t rp2_get_rom_magic(void);
+
+/*! \brief Get RP2 bootrom chip version number
+ *  \ingroup pico_platform
+ *
+ * Reads the last byte of the bootrom magic, and asserts the first 2 bytes are `M`,`u`
+ *
+ * \return the bootrom chip version
+ */
+uint8_t rp2_get_rom_chip_version(void);
+
+/*! \brief Get the RP2 chip revision number
+ *  \ingroup pico_platform
+ *
+ * Reads the chip revision from SYSINFO
+ * 
+ * @return the chip revision number
+ */
+uint8_t rp2_get_chip_revision(void);
+
+/*! \brief Get the RP2 chip
+ *  \ingroup pico_platform
+ *
+ * Uses \ref rp2_get_rom_version, \ref rp2_get_rom_chip_version and \ref rp2_get_chip_revision
+ * to determine what chip the code is running on
+ *
+ * \return the RP2 chip, \see rp2_chip
+ */
+rp2_chip_t rp2_get_chip(void);
+
 #define host_safe_hw_ptr(x) ((uintptr_t)(x))
 #define native_safe_hw_ptr(x) host_safe_hw_ptr(x)
 
