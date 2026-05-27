@@ -2,6 +2,8 @@
 
 INCLUDE "section_no_flash_entrypoint.incl"
 INCLUDE "section_xip_ram_text.incl"
+INCLUDE "section_generated_pre_text.incl"
+INCLUDE "section_extra_pre_text.incl"
 INCLUDE "section_no_flash_text.incl"
 INCLUDE "section_no_flash_rodata.incl"
 INCLUDE "sections_arm_ex.incl"

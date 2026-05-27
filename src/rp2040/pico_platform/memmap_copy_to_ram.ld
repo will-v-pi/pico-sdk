@@ -28,6 +28,8 @@ INCLUDE "memmap_copy_to_ram.incl"
  *         │   ├── section_uninitialized_data.incl       rp2_common/pico_standard_link
  *         │   ├── section_xip_ram_text.incl             rp2_common/pico_standard_link
  *         │   │   └── section_xip_ram_text_generated_includes.incl  rp2_common/pico_standard_link
+ *         │   ├── section_generated_pre_text.incl       rp2_common/pico_standard_link
+ *         │   ├── section_extra_pre_text.incl           rp2_common/pico_standard_link
  *         │   └── section_copy_to_ram_text.incl         rp2_common/pico_standard_link
  *         ├── section_generated_post_text.incl          rp2_common/pico_standard_link
  *         ├── section_extra_post_text.incl              rp2_common/pico_standard_link

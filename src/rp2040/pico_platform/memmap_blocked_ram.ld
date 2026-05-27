@@ -26,6 +26,8 @@ INCLUDE "memmap_default.incl"
  *         │   ├── section_flashtext.incl                rp2_common/pico_standard_link
  *         │   ├── section_xip_ram_text.incl             rp2_common/pico_standard_link
  *         │   │   └── section_xip_ram_text_generated_includes.incl  rp2_common/pico_standard_link
+ *         │   ├── section_generated_pre_text.incl       rp2_common/pico_standard_link
+ *         │   ├── section_extra_pre_text.incl           rp2_common/pico_standard_link
  *         │   ├── section_default_text.incl             rp2_common/pico_standard_link
  *         │   │   └── default_text_excludes.incl        rp2_common/pico_standard_link
  *         │   ├── section_default_rodata.incl           rp2_common/pico_standard_link
