@@ -380,7 +380,8 @@ if (NOT TARGET pico_standard_link)
     endfunction()
 
     # pico_place_not_in_flash_functions_in_xip_sram(TARGET [OBJECT_FILES])
-    # \brief\ Places both ".not_in_flash.text*" and ".time_critical.text*" sections of the target into XIP SRAM.
+    # \brief\ Places both ".time_critical.not_in_flash.text*" and ".time_critical.text*" sections of the
+    #         target into XIP SRAM.
     #
     # Configures the target to place functions marked __not_in_flash_func() and __time_critical_func() into
     # XIP SRAM rather than normal SRAM, as it has dedicated AHB ports which are otherwise unused in no_flash
@@ -389,13 +390,13 @@ if (NOT TARGET pico_standard_link)
     # section with those descriptions using the "section_xip_ram_text_generated_includes.incl" file generated via
     # pico_generate_section_xip_ram_text_includes().
     #
-    # Example 1. Placing the ".not_in_flash.text*" and ".time_critical.text*" sections of all object files
-    # into XIP SRAM:
+    # Example 1. Placing the ".time_critical.not_in_flash.text*" and ".time_critical.text*" sections of all
+    # object files into XIP SRAM:
     #
     # pico_place_not_in_flash_functions_in_xip_sram(myTarget)
     #
-    # Example 2. Placing the ".not_in_flash.text*" and ".time_critical.text*" sections of only the specified
-    # objects with filenames matching main.c.o, other.cpp.o, or libxyz.a into XIP SRAM:
+    # Example 2. Placing the ".time_critical.not_in_flash.text*" and ".time_critical.text*" sections of only
+    # the specified objects with filenames matching main.c.o, other.cpp.o, or libxyz.a into XIP SRAM:
     #
     # pico_place_not_in_flash_functions_in_xip_sram(myTarget
     #         main.c.o
@@ -413,17 +414,18 @@ if (NOT TARGET pico_standard_link)
     # \param\ TARGET The target whose not_in_flash and time_critical functions should run from XIP SRAM
     # \param\ OBJECT_FILES An optional user specified list of object (or archive) filenames used as the
     #         basis for generating file specific linker script input section file patterns for the
-    #         ".not_in_flash.text*" and ".time_critical.text*" section names. If none are specified the
-    #         "*" all-files pattern is assumed.
+    #         ".time_critical.not_in_flash.text*" and ".time_critical.text*" section names. If none are
+    #         specified the "*" all-files pattern is assumed.
     function(pico_place_not_in_flash_functions_in_xip_sram TARGET)
         pico_add_linker_input_section_descriptions(${TARGET} PICO_SECTION_XIP_RAM_TEXT_INCLUDES ".time_critical.text*" "${ARGN}")
-        pico_add_linker_input_section_descriptions(${TARGET} PICO_SECTION_XIP_RAM_TEXT_INCLUDES ".not_in_flash.text*" "${ARGN}")
+        pico_add_linker_input_section_descriptions(${TARGET} PICO_SECTION_XIP_RAM_TEXT_INCLUDES ".time_critical.not_in_flash.text*" "${ARGN}")
         pico_set_bool_target_property_and_script_variable(${TARGET} PICO_USE_XIP_CACHE_AS_RAM 1)
         pico_generate_section_xip_ram_text_includes(${TARGET})
     endfunction()
 
     # pico_place_all_functions_in_xip_sram(TARGET [OBJECT_FILES])
-    # \brief\ Places ".text*", ".not_in_flash.text*", and ".time_critical.text*" sections of the target into XIP SRAM.
+    # \brief\ Places ".text*", ".time_critical.not_in_flash.text*", and ".time_critical.text*" sections of the
+    #         target into XIP SRAM.
     #
     # Configures the target to place all functions into XIP SRAM rather than normal SRAM, as it has
     # dedicated AHB ports which are otherwise unused in no_flash and copy_to_ram binaries. This sets the
@@ -431,13 +433,13 @@ if (NOT TARGET pico_standard_link)
     # and populates the ".xip_ram_text" linker script output section with those descriptions using the
     # "section_xip_ram_text_generated_includes.incl" file generated via pico_generate_section_xip_ram_text_includes().
     #
-    # Example 1. Placing the ".text*", ".not_in_flash.text*", and ".time_critical.text*" sections of all object
-    # files into XIP SRAM:
+    # Example 1. Placing the ".text*", ".time_critical.not_in_flash.text*", and ".time_critical.text*" sections
+    # of all object files into XIP SRAM:
     #
     # pico_place_all_functions_in_xip_sram(myTarget)
     #
-    # Example 2. Placing the ".text*", ".not_in_flash.text*", and ".time_critical.text*" sections of only the
-    # specified objects with filenames matching main.c.o, other.cpp.o, or libxyz.a into XIP SRAM:
+    # Example 2. Placing the ".text*", ".time_critical.not_in_flash.text*", and ".time_critical.text*" sections
+    # of only the specified objects with filenames matching main.c.o, other.cpp.o, or libxyz.a into XIP SRAM:
     #
     # pico_place_all_functions_in_xip_sram(myTarget
     #         main.c.o
@@ -455,11 +457,11 @@ if (NOT TARGET pico_standard_link)
     # \param\ TARGET The target whose functions should run from XIP SRAM
     # \param\ OBJECT_FILES An optional user specified list of object (or archive) filenames used as the
     #         basis for generating file specific linker script input section file patterns for the
-    #         ".text*", ".not_in_flash.text*", and ".time_critical.text*" section names. If none are specified
-    #         the "*" all-files pattern is assumed.
+    #         ".text*", ".time_critical.not_in_flash.text*", and ".time_critical.text*" section names. If none
+    #         are specified the "*" all-files pattern is assumed.
     function(pico_place_all_functions_in_xip_sram TARGET)
         pico_add_linker_input_section_descriptions(${TARGET} PICO_SECTION_XIP_RAM_TEXT_INCLUDES ".time_critical.text*" "${ARGN}")
-        pico_add_linker_input_section_descriptions(${TARGET} PICO_SECTION_XIP_RAM_TEXT_INCLUDES ".not_in_flash.text*" "${ARGN}")
+        pico_add_linker_input_section_descriptions(${TARGET} PICO_SECTION_XIP_RAM_TEXT_INCLUDES ".time_critical.not_in_flash.text*" "${ARGN}")
         pico_add_linker_input_section_descriptions(${TARGET} PICO_SECTION_XIP_RAM_TEXT_INCLUDES ".text*" "${ARGN}")
         pico_set_bool_target_property_and_script_variable(${TARGET} PICO_USE_XIP_CACHE_AS_RAM 1)
         pico_generate_section_xip_ram_text_includes(${TARGET})

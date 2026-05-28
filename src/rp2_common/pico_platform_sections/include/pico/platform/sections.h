@@ -25,20 +25,20 @@
 #define __after_data(group) __attribute__((section(".after_data." group)))
 #endif
 
-/*! \brief Section attribute macro for placement not in flash (i.e in RAM)
+/*! \brief Section attribute macro for data placement not in flash (i.e in RAM)
  *  \ingroup pico_platform
  *
  * For example a 3 element `uint32_t` array placed in RAM (even though it is `static const`)
  *
  *     static const uint32_t __not_in_flash("my_group_name") an_array[3];
  *
- * The section attribute is `.not_in_flash.<group>`
+ * The section attribute is `.time_critical.not_in_flash.data.<group>`
  *
  * \param group a string suffix to use in the section name to distinguish groups that can be linker
  *              garbage-collected independently
  */
 #ifndef __not_in_flash
-#define __not_in_flash(group) __attribute__((section(".not_in_flash." group)))
+#define __not_in_flash(group) __attribute__((section(".time_critical.not_in_flash.data." group)))
 #endif
 
 /*! \brief Section attribute macro for placement in the SRAM bank 4 (known as "scratch X")
@@ -150,7 +150,7 @@
 #endif
 #endif
 
-/*! \brief Section attribute macro for placement in flash even in a COPY_TO_RAM binary
+/*! \brief Section attribute macro for data placement in flash even in a COPY_TO_RAM binary
  *  \ingroup pico_platform
  *
  * For example a `uint32_t` variable explicitly placed in flash (it will hard fault if you attempt to write it!)
@@ -176,10 +176,10 @@
  *
  *     void __in_ram_func(my_func)(int some_arg) {
  *
- * The function is placed in the `.not_in_flash.<func_name>` linker section
+ * The function is placed in the `.time_critical.in_ram.text.<func_name>` linker section
  */
 #ifndef __in_ram_func
-#define __in_ram_func(func_name) __noinline __attribute__((section(".not_in_flash." __STRING(func_name)))) func_name
+#define __in_ram_func(func_name) __noinline __attribute__((section(".time_critical.in_ram.text." __STRING(func_name)))) func_name
 #endif
 
 /*! \brief Indicates a function should not run from flash
@@ -198,12 +198,12 @@
  *
  *     void __not_in_flash_func(my_func)(int some_arg) {
  *
- * The function is placed in the `.not_in_flash.text.<func_name>` linker section
+ * The function is placed in the `.time_critical.not_in_flash.text.<func_name>` linker section
  *
  * \see __no_inline_not_in_flash_func
  */
 #ifndef __not_in_flash_func
-#define __not_in_flash_func(func_name) __attribute__((section(".not_in_flash.text." __STRING(func_name)))) func_name
+#define __not_in_flash_func(func_name) __attribute__((section(".time_critical.not_in_flash.text." __STRING(func_name)))) func_name
 #endif
 
 /*! \brief Indicates a function is time/latency critical and should not run from flash
@@ -246,7 +246,7 @@
  *
  *     void __no_inline_not_in_flash_func(my_func)(int some_arg) {
  *
- * The function is placed in the `.not_in_flash.text.<func_name>` linker section
+ * The function is placed in the `.time_critical.not_in_flash.text.<func_name>` linker section
  */
 #ifndef __no_inline_not_in_flash_func
 #define __no_inline_not_in_flash_func(func_name) __noinline __not_in_flash_func(func_name)
