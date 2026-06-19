@@ -9,14 +9,11 @@ if (INSTALL_DEBIAN_PACKAGE_LAYOUT)
 else()
     # Normal install
     include(GNUInstallDirs)
-    set(EXTRA_NOT_FOUND_MESSAGE " Have you installed pico-sdk with `cmake --install`?")
+    # Have to use BINDIR/../xxx because there is no SRCDIR, and LIBDIR sometimes has a suffix which can cause issues
     set(pico_sdk_install_dir "${CMAKE_INSTALL_FULL_BINDIR}/../src/pico_sdk")
     set(config_file_install_dir "${CMAKE_INSTALL_FULL_BINDIR}/../lib/cmake/pico_sdk")
     set(SKIP_SDK_INSTALL FALSE)
 endif()
-
-message("Installing SDK to ${pico_sdk_install_dir}")
-message("Installing CMake files to ${config_file_install_dir}")
 
 # Create a ConfigVersion.cmake file
 include(CMakePackageConfigHelpers)
@@ -60,7 +57,7 @@ endfunction()
 
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-    # Install all tracked files
+    # Install all tracked files, with exclusions in sdk_should_install_file
     execute_process(COMMAND ${GIT_EXECUTABLE} ls-files --recurse-submodules
                     WORKING_DIRECTORY ${PICO_SDK_PATH}
                     OUTPUT_VARIABLE GIT_LS_FILES)
@@ -70,7 +67,6 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
         sdk_should_install_file("${FILE}" should_install)
         if (should_install)
             get_filename_component(DIRECTORY "${FILE}" DIRECTORY)
-            message("${FILE} ${DIRECTORY}")
             install(FILES
                 "${PICO_SDK_PATH}/${FILE}"
                 DESTINATION "${pico_sdk_install_dir}/${DIRECTORY}"
