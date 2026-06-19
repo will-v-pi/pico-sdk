@@ -1,0 +1,32 @@
+# CMake package: Raspberry Pi Pico SDK
+# Copyright (c) 2026 Raspberry Pi
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Usage (before project(); then pico_sdk_init() after project()):
+#
+#   cmake_minimum_required(VERSION 3.13)
+#   find_package(pico_sdk 2.1 REQUIRED)
+#   project(my_firmware C CXX ASM)
+#   pico_sdk_init()
+
+include_guard(GLOBAL)
+
+set(pico_sdk_install_dir "@pico_sdk_install_dir@")
+
+if(NOT EXISTS "${pico_sdk_install_dir}/pico_sdk_init.cmake")
+  set(pico_sdk_FOUND FALSE)
+  set(pico_sdk_NOT_FOUND_MESSAGE
+    "The Pico SDK was not found at ${pico_sdk_install_dir}.@EXTRA_NOT_FOUND_MESSAGE@")
+  unset(pico_sdk_install_dir)
+  return()
+endif()
+
+get_filename_component(PICO_SDK_PATH "${PICO_SDK_PATH}" REALPATH)
+
+set(PICO_SDK_PATH "${pico_sdk_install_dir}" CACHE PATH "Path to the Raspberry Pi Pico SDK" FORCE)
+unset(pico_sdk_install_dir)
+
+include("${PICO_SDK_PATH}/pico_sdk_init.cmake")
+
+set(pico_sdk_FOUND TRUE)

@@ -68,4 +68,8 @@ if (NOT TARGET _pico_sdk_inclusion_marker)
     if (NOT PICO_SDK_TOP_LEVEL_PROJECT)
         pico_promote_common_scope_vars()
     endif()
+
+    if (PICO_SDK_TOP_LEVEL_PROJECT)
+        include(cmake/install_find_package.cmake)
+    endif()
 endif()
