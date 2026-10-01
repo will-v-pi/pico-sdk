@@ -459,6 +459,29 @@ void flash_devinfo_set_cs_gpio(uint cs, uint gpio) {
     );
 }
 
+void flash_program_invalid_block_to_b_partition(uint pi_a) {
+    uint32_t invalid_block[FLASH_PAGE_SIZE/sizeof(uint32_t)] = PICOBIN_INVALID_BLOCK;
+
+    int pi_b = rom_get_b_partition(pi_a);
+    invalid_params_if(HARDWARE_FLASH, pi_b < 0);
+
+    uint32_t buffer[4 + 1] = {}; // single partition, with maximum of 4 words returned, plus 1
+    int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (pi_b << 24));
+    hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION));
+    hard_assert(ret == 3);
+
+    uint32_t location_and_permissions = buffer[1];
+    uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu) * FLASH_SECTOR_SIZE;
+
+    saddr += XIP_BASE;
+    cflash_flags_t flags = {
+        (CFLASH_OP_VALUE_PROGRAM << CFLASH_OP_LSB)
+        | (CFLASH_SECLEVEL_VALUE_SECURE << CFLASH_SECLEVEL_LSB)
+        | (CFLASH_ASPACE_VALUE_STORAGE << CFLASH_ASPACE_LSB)
+    };
+    ret = rom_flash_op(flags, saddr, sizeof(invalid_block), (uint8_t*)invalid_block);
+}
+
 int flash_roll_qmi_to_partition(uint partition_num) {
     uint32_t buffer[2 + 1] = {}; // 2 words for the partition location and flags, plus 1
     int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (partition_num << 24));
