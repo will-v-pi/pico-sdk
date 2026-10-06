@@ -1000,6 +1000,11 @@ static inline void rom_helper_explicit_buy(void *param) {
  * \param buffer base address of scratch space
  * \param buffer_size size of scratch space
  */
+#if PICO_ALLOW_NONSECURE_BUY && PICO_NONSECURE
+static inline int rom_explicit_buy(uint8_t *buffer, uint32_t buffer_size) {
+    return rom_secure_call((uint32_t)buffer, buffer_size, 0, 0, SECURE_CALL_rom_explicit_buy);
+}
+#else
 static inline int rom_explicit_buy(uint8_t *buffer, uint32_t buffer_size) {
     int rc = 0;
     rom_helper_explicit_buy_params_t params = {
@@ -1014,6 +1019,7 @@ static inline int rom_explicit_buy(uint8_t *buffer, uint32_t buffer_size) {
         return rc;
     }
 }
+#endif
 
 #ifndef __riscv
 /*!

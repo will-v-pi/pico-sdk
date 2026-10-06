@@ -55,7 +55,7 @@ if (NOT TARGET pico_rpi_connect_ota)
 endif()
 
 
-# pico_add_rpi_connect_ota_outputs(TARGET CONFIGURATION [WIFI_SSID <ssid>] [WIFI_PASSWORD <password>] [CONNECT_TOKEN <token>] [COMBINED_TARGET <name>] [NO_BOARD] [NO_DATE] [UPDATE_DIR <directory>] [PARTITION_TABLE <path>])
+# pico_add_rpi_connect_ota_outputs(TARGET CONFIGURATION [WIFI_SSID <ssid>] [WIFI_PASSWORD <password>] [CONNECT_TOKEN <token>] [COMBINED_TARGET <name>] [NO_BOARD] [NO_DATE] [UPDATE_DIR <directory>] [PARTITION_TABLE <path>] [SECURE_TARGET <target>] [SECURE_SIZE <size_in_k>])
 # \brief_nodesc\ Add UF2 outputs for use with rpi_connect_ota
 #
 # Adds UF2 outputs created from TARGET for use with rpi_connect_ota,
@@ -74,6 +74,7 @@ endif()
 # The available configurations are:
 # - default - Main A/B partitions, WiFi firmware A/B partitions, and FFS partition
 # - no_wifi_firmware - Main A/B partitions, and FFS partition
+# - trustzone - Secure A/B partitions, NonSecure A/B partitions, WiFi firmware A/B partitions, and FFS partition
 #
 # \param\ TARGET The target to add outputs for
 # \param\ CONFIGURATION Pick the configuration to use - options are: default, no_wifi_firmware
@@ -85,9 +86,11 @@ endif()
 # \param\ NO_DATE Don't include the current date in the update filename
 # \param\ UPDATE_DIR Directory to place the update UF2 in - defaults to ${CMAKE_CURRENT_LIST_DIR}/updates
 # \param\ PARTITION_TABLE Specify custom path to partition table to use - must match the partition layout expected by the configuration
+# \param\ SECURE_TARGET Target to put in the secure partitions
+# \param\ SECURE_SIZE Size to make the secure partitions
 function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
     set(options NO_DATE NO_BOARD)
-    set(oneValueArgs WIFI_SSID WIFI_PASSWORD CONNECT_TOKEN COMBINED_TARGET UPDATE_DIR PARTITION_TABLE)
+    set(oneValueArgs WIFI_SSID WIFI_PASSWORD CONNECT_TOKEN COMBINED_TARGET UPDATE_DIR PARTITION_TABLE SECURE_TARGET SECURE_SIZE)
     cmake_parse_arguments(PARSE_ARGV 2 OPT "${options}" "${oneValueArgs}" "${multiValueArgs}")
 
     if (NOT OPT_COMBINED_TARGET)
@@ -111,8 +114,12 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
         set(FFS_SIZE "8")
         set(WIFI_FW_SIZE "256")
         math(EXPR FLASH_SIZE_K "(${PICO_FLASH_SIZE_BYTES})/1024")
-        if (CONFIGURATION STREQUAL "default")
+        if (CONFIGURATION STREQUAL "default" OR CONFIGURATION STREQUAL "trustzone")
             math(EXPR MAIN_SIZE "(${FLASH_SIZE_K} - (${WIFI_FW_SIZE}*2) - ${FFS_SIZE} - ${USED_SIZE}) / 2")
+            if (CONFIGURATION STREQUAL "trustzone")
+                set(SECURE_SIZE ${OPT_SECURE_SIZE})
+                math(EXPR MAIN_SIZE "${MAIN_SIZE} - ${SECURE_SIZE}")
+            endif()
             if (NOT TARGET ${TARGET}_wifi_firmware)
                 # Ensure TARGET is configured to use wifi firmware from partition
                 # (no embedded PT as using FFS one, and no TBYB variant as that's created below)
@@ -161,6 +168,13 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
             ${TARGET} ${TARGET}_erase
             ${TARGET}_ffs_blob
             PARTITIONS 0 1 2)
+    elseif (CONFIGURATION STREQUAL "trustzone")
+        pico_combine_uf2_outputs(${OPT_COMBINED_TARGET} ${TARGET}_pt
+            ${OPT_SECURE_TARGET} ${TARGET}_erase
+            ${TARGET} ${TARGET}_erase
+            ${TARGET}_wifi_firmware ${TARGET}_erase
+            ${TARGET}_ffs_blob
+            PARTITIONS 0 1 2 3 4 5 6)
     else()
         message(FATAL_ERROR "Unknown rpi_connect_ota configuration '${CONFIGURATION}'")
     endif()

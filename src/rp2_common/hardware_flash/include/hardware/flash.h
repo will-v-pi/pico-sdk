@@ -319,6 +319,21 @@ void flash_devinfo_set_cs_gpio(uint cs, uint gpio);
 void flash_program_invalid_block_to_b_partition(uint pi_a);
 
 /*!
+ * \brief Roll QMI to a partition, at an offset address
+ * \ingroup pico_bootrom
+ *
+ * Rolls the QMI to place the specified partition starting at the specified XIP window,
+ * enabling access to the partition via the translated XIP windows.
+ * 
+ * This can be useful to give NonSecure code access to a partition,
+ * while keeping the untranslated XIP window inaccessible.
+ * 
+ * \param partition_num the partition number
+ * \return BOOTROM_OK on success, otherwise a negative error code
+ */
+int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window);
+
+/*!
  * \brief Roll QMI to a partition
  * \ingroup pico_bootrom
  *
@@ -330,7 +345,9 @@ void flash_program_invalid_block_to_b_partition(uint pi_a);
  * \param partition_num the partition number
  * \return BOOTROM_OK on success, otherwise a negative error code
  */
-int flash_roll_qmi_to_partition(uint partition_num);
+static inline int flash_roll_qmi_to_partition(uint partition_num) {
+    flash_roll_qmi_add_partition_at_window(partition_num, 0);
+}
 
 #endif // !PICO_RP2040 || PICO_COMBINED_DOCS
 

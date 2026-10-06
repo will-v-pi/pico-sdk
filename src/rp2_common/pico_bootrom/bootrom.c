@@ -125,6 +125,11 @@ int rom_add_flash_runtime_partition(uint32_t start_offset, uint32_t size, uint32
     return PICO_ERROR_INSUFFICIENT_RESOURCES;
 }
 
+#if PICO_ALLOW_NONSECURE_PICK_AB && PICO_NONSECURE
+int rom_pick_ab_partition_during_update(uint32_t *workarea_base, uint32_t workarea_size, uint partition_a_num) {
+    return rom_secure_call((uint32_t)workarea_base, workarea_size, partition_a_num, 0, SECURE_CALL_rom_pick_ab_partition_during_update);
+}
+#else
 int rom_pick_ab_partition_during_update(uint32_t *workarea_base, uint32_t workarea_size, uint partition_a_num) {
 #if !PICO_RP2040
     // Generated from adding the following code into the bootrom
@@ -214,6 +219,7 @@ int rom_pick_ab_partition_during_update(uint32_t *workarea_base, uint32_t workar
 
     return rc;
 }
+#endif
 
 int rom_get_owned_partition(uint partition_num) {
     int ret;

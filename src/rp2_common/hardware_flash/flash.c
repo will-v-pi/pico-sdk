@@ -476,13 +476,25 @@ void flash_program_invalid_block_to_b_partition(uint pi_a) {
     saddr += XIP_BASE;
     cflash_flags_t flags = {
         (CFLASH_OP_VALUE_PROGRAM << CFLASH_OP_LSB)
-        | (CFLASH_SECLEVEL_VALUE_SECURE << CFLASH_SECLEVEL_LSB)
+        | (CFLASH_SECLEVEL_VALUE_NONSECURE << CFLASH_SECLEVEL_LSB)
         | (CFLASH_ASPACE_VALUE_STORAGE << CFLASH_ASPACE_LSB)
     };
     ret = rom_flash_op(flags, saddr, sizeof(invalid_block), (uint8_t*)invalid_block);
+    hard_assert(ret == BOOTROM_OK);
 }
 
-int flash_roll_qmi_to_partition(uint partition_num) {
+#if PICO_NONSECURE
+#if PICO_ALLOW_NONSECURE_ROLL_PARTITION
+int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window) {
+    return rom_secure_call(partition_num, window, 0, 0, SECURE_CALL_flash_roll_qmi_add_partition_at_window);
+}
+#else
+int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window) {
+    panic_unsupported();
+}
+#endif
+#else
+int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window) {
     uint32_t buffer[2 + 1] = {}; // 2 words for the partition location and flags, plus 1
     int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (partition_num << 24));
     if (ret < 0) return ret;
@@ -496,7 +508,7 @@ int flash_roll_qmi_to_partition(uint partition_num) {
         if ((uint32_t)roll & (FLASH_SECTOR_SIZE - 1u)) return BOOTROM_ERROR_BAD_ALIGNMENT;
         roll >>= FLASH_SECTOR_SHIFT;
         int32_t size = (int32_t)((eaddr - saddr) >> FLASH_SECTOR_SHIFT);
-        for (uint i = 0; i < 4; i++) {
+        for (uint i = window; i < 4; i++) {
             static_assert(4 * 1024 * 1024 / FLASH_SECTOR_SIZE == 0x400, "Expected 4 MiB / FLASH_SECTOR_SIZE = 0x400");
             if (roll < 0) {
                 roll += 0x400;
@@ -511,5 +523,6 @@ int flash_roll_qmi_to_partition(uint partition_num) {
     }
     return BOOTROM_OK;
 }
+#endif
 
 #endif // !PICO_RP2040

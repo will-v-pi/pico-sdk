@@ -33,13 +33,17 @@ if (NOT TARGET pico_secure)
     # - GPIO: Allow non-secure to access GPIOs assigned to non-secure (eg with gpio_assign_to_ns)
     # - USB: Allow non-secure to access USB
     # - RESETS: Allow non-secure to access resets specified by PICO_ALLOW_NONSECURE_RESETS_MASK (automatically set if USB is set)
+    # - BOOTROM_LOCKING: Allow non-secure to access bootrom locks less than PICO_ALLOW_NONSECURE_BOOTROM_LOCK_MAX (defaults to allow all)
+    # - PICK_AB: Allow non-secure to call rom_pick_ab_partition_during_update
+    # - ROLL_PARTITION: Allow non-secure to call flash_roll_qmi_add_partition_at_window
+    # - BUY: Allow non-secure to call rom_explicit_buy
     # - NONSECURE_TIMER <index>: Assign specified timer to non-secure
     #
     # \param\ SECURE_TARGET The secure target
     # \param\ NONSECURE_TARGET The non-secure target
     # \param\ OPTIONS The options to set
     function(pico_set_security_options SECURE_TARGET NONSECURE_TARGET)
-        set(options STDIO RAND DMA USER_IRQ PIO GPIO USB RESETS)
+        set(options STDIO RAND DMA USER_IRQ PIO GPIO USB RESETS BOOTROM_LOCKING PICK_AB ROLL_PARTITION BUY)
         set(oneValueArgs NONSECURE_TIMER)
         cmake_parse_arguments(PARSE_ARGV 2 OPTS "${options}" "${oneValueArgs}" "")
 

@@ -393,9 +393,19 @@ typedef struct cflash_flags {
 #define SECURE_CALL_pads_bank0_write_masked                     SECURE_CALL_WELL_KNOWN_CODE('P', '0', 'W', 'M')
 #define SECURE_CALL_pads_bank0_read                             SECURE_CALL_WELL_KNOWN_CODE('P', '0', 'R', 'D')
 
-#define SECURE_CALL_reset_block_mask                        SECURE_CALL_WELL_KNOWN_CODE('R', 'T', 'R', 'M')
-#define SECURE_CALL_unreset_block_mask                      SECURE_CALL_WELL_KNOWN_CODE('R', 'T', 'U', 'M')
-#define SECURE_CALL_unreset_block_mask_wait_blocking        SECURE_CALL_WELL_KNOWN_CODE('R', 'T', 'U', 'W')
+#define SECURE_CALL_reset_block_mask                            SECURE_CALL_WELL_KNOWN_CODE('R', 'T', 'R', 'M')
+#define SECURE_CALL_unreset_block_mask                          SECURE_CALL_WELL_KNOWN_CODE('R', 'T', 'U', 'M')
+#define SECURE_CALL_unreset_block_mask_wait_blocking            SECURE_CALL_WELL_KNOWN_CODE('R', 'T', 'U', 'W')
+
+#define SECURE_CALL_bootrom_try_acquire_lock                    SECURE_CALL_WELL_KNOWN_CODE('B', 'L', 'T', 'A')
+#define SECURE_CALL_bootrom_acquire_lock_blocking               SECURE_CALL_WELL_KNOWN_CODE('B', 'L', 'A', 'B')
+#define SECURE_CALL_bootrom_release_lock                        SECURE_CALL_WELL_KNOWN_CODE('B', 'L', 'R', 'L')
+
+#define SECURE_CALL_rom_pick_ab_partition_during_update         SECURE_CALL_WELL_KNOWN_CODE('P', 'A', 'B', 'U')
+
+#define SECURE_CALL_rom_explicit_buy                            SECURE_CALL_WELL_KNOWN_CODE('R', 'E', 'B', 'F')
+
+#define SECURE_CALL_flash_roll_qmi_add_partition_at_window      SECURE_CALL_WELL_KNOWN_CODE('F', 'R', 'P', 'W')
 #endif
 
 #endif

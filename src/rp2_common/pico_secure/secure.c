@@ -543,6 +543,44 @@ int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_
             return BOOTROM_OK;
         }
     #endif
+    #if PICO_ALLOW_NONSECURE_BOOTROM_LOCKING
+        case SECURE_CALL_bootrom_try_acquire_lock: {
+            if (a > PICO_ALLOW_NONSECURE_BOOTROM_LOCK_MAX) return BOOTROM_ERROR_NOT_PERMITTED;
+            return bootrom_try_acquire_lock(a);
+        }
+        case SECURE_CALL_bootrom_acquire_lock_blocking: {
+            if (a > PICO_ALLOW_NONSECURE_BOOTROM_LOCK_MAX) return BOOTROM_ERROR_NOT_PERMITTED;
+            bootrom_acquire_lock_blocking(a);
+            return BOOTROM_OK;
+        }
+        case SECURE_CALL_bootrom_release_lock: {
+            if (a > PICO_ALLOW_NONSECURE_BOOTROM_LOCK_MAX) return BOOTROM_ERROR_NOT_PERMITTED;
+            bootrom_release_lock(a);
+            return BOOTROM_OK;
+        }
+    #endif
+    #if PICO_ALLOW_NONSECURE_PICK_AB
+        case SECURE_CALL_rom_pick_ab_partition_during_update: {
+            uint32_t valid = RCP_MASK_FALSE;
+            rom_validate_ns_buffer((uint32_t*)a, b, RCP_MASK_FALSE, &valid);
+            if (!rcp_is_true(valid)) return BOOTROM_ERROR_INVALID_ADDRESS;
+            return rom_pick_ab_partition_during_update((uint32_t*)a, b, c);
+        }
+    #endif
+    #if PICO_ALLOW_NONSECURE_ROLL_PARTITION
+        case SECURE_CALL_flash_roll_qmi_add_partition_at_window: {
+            if (b > PICO_ALLOW_NONSECURE_QMI_WINDOW_MAX) return BOOTROM_ERROR_NOT_PERMITTED;
+            return flash_roll_qmi_add_partition_at_window(a, b);
+        }
+    #endif
+    #if PICO_ALLOW_NONSECURE_BUY
+        case SECURE_CALL_rom_explicit_buy: {
+            uint32_t valid = RCP_MASK_FALSE;
+            rom_validate_ns_buffer((uint8_t*)a, b, RCP_MASK_FALSE, &valid);
+            if (!rcp_is_true(valid)) return BOOTROM_ERROR_INVALID_ADDRESS;
+            return rom_explicit_buy((uint8_t*)a, b);
+        }
+    #endif
         default: {
             printf("%08x is not a supported rom function\n", fn);
             return BOOTROM_ERROR_INVALID_ARG;

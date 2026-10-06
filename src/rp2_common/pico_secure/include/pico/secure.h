@@ -160,6 +160,22 @@ int pio_request_unused_pio_from_secure(void);
 #endif
 #endif
 
+#if (PICO_ALLOW_NONSECURE_BOOTROM_LOCKING && PICO_SECURE) || PICO_COMBINED_DOCS
+// PICO_CONFIG: PICO_ALLOW_NONSECURE_BOOTROM_LOCK_MAX, Max bootrom lock number that can be accessed by non-secure, type=int, default=BOOTROM_LOCK_MAX, group=pico_bootrom
+#ifndef PICO_ALLOW_NONSECURE_BOOTROM_LOCK_MAX
+#define PICO_ALLOW_NONSECURE_BOOTROM_LOCK_MAX BOOTROM_LOCK_MAX
+#endif
+#endif
+
+#if (PICO_ALLOW_NONSECURE_ROLL_PARTITION && PICO_SECURE) || PICO_COMBINED_DOCS
+#include "hardware/flash.h"
+
+// PICO_CONFIG: PICO_ALLOW_NONSECURE_QMI_WINDOW_MAX, Max QMI window that can be configured by non-secure, type=int, default=3, group=hardware_flash
+#ifndef PICO_ALLOW_NONSECURE_QMI_WINDOW_MAX
+#define PICO_ALLOW_NONSECURE_QMI_WINDOW_MAX 3
+#endif
+#endif
+
 
 #ifdef __cplusplus
 }

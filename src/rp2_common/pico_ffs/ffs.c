@@ -29,8 +29,16 @@
 #ifdef PICO_RP2040
 #define FL_OFFSET_TO_READ_ADDR(_o)      ((void *)(XIP_BASE + (uint32_t)(_o)))
 #else // RP2350 may be using address mapping, we need to avoid remapped addresses
+#if PICO_NONSECURE
+#ifndef FFS_PARTITION_WINDOW
+#define FFS_PARTITION_WINDOW 3
+#endif
+#define FL_OFFSET_TO_READ_ADDR(_o)      \
+    ((void *)(XIP_BASE + (uint32_t)(_o)))
+#else
 #define FL_OFFSET_TO_READ_ADDR(_o)      \
     ((void *)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + (uint32_t)(_o)))
+#endif
 #endif
 
 // Convert an unaligned flash offset into its page start offset
@@ -101,6 +109,13 @@ static int get_ffs_partition_info(void) {
         return PICO_ERROR_GENERIC;
     }
 
+#if PICO_NONSECURE
+    int ret = flash_roll_qmi_add_partition_at_window(picked_p, FFS_PARTITION_WINDOW);
+    hard_assert(ret == BOOTROM_OK);
+
+    ffs_data.start_offset = (4 * 1024 * 1024) * FFS_PARTITION_WINDOW;
+    ffs_data.end_offset = ffs_data.start_offset + (2 * FLASH_SECTOR_SIZE); // expected size is 8k
+#else
     int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_SINGLE_LOCATION_AND_FLAGS | (picked_p << 24));
     if (3 != ret || PT_SINGLE_LOCATION_AND_FLAGS != buffer[0]) {
         return PICO_ERROR_NOT_FOUND;
@@ -109,6 +124,7 @@ static int get_ffs_partition_info(void) {
     uint32_t loc_and_perms = buffer[1];
     ffs_data.start_offset = ((loc_and_perms >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu) * FLASH_SECTOR_SIZE;
     ffs_data.end_offset = (((loc_and_perms >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1) * FLASH_SECTOR_SIZE;
+    #endif
 
     return PICO_OK;
 }

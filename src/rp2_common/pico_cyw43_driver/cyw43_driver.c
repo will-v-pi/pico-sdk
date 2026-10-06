@@ -30,6 +30,11 @@ static async_context_t *cyw43_async_context = NULL;
     int32_t cyw43_wifi_fw_len;
     int32_t cyw43_clm_len;
     uintptr_t fw_data;
+#if PICO_NONSECURE
+    #ifndef CYW43_FIRMWARE_PARTITION_WINDOW
+    #define CYW43_FIRMWARE_PARTITION_WINDOW 2
+    #endif
+#endif
 #endif
 
 static void cyw43_sleep_timeout_reached(async_context_t *context, async_at_time_worker_t *worker);
@@ -119,9 +124,9 @@ bool cyw43_driver_init(async_context_t *context) {
     uint32_t buffer[(16 * 4) + 1] = {}; // maximum of 16 partitions, each with maximum of 4 words returned, plus 1
     int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_PARTITION_ID);
 
-    hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_PARTITION_ID));
-
     if (ret > 0) {
+        hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_PARTITION_ID));
+
         int i = 1;
         int p = 0;
         int picked_p = -1;
@@ -182,6 +187,16 @@ bool cyw43_driver_init(async_context_t *context) {
             }
 
             CYW43_DEBUG("Chosen CYW43 firmware in partition %d\n", picked_p);
+        
+        #if PICO_NONSECURE
+            int ret = flash_roll_qmi_add_partition_at_window(picked_p, CYW43_FIRMWARE_PARTITION_WINDOW);
+            hard_assert(ret == BOOTROM_OK);
+
+            uint32_t saddr = (4 * 1024 * 1024) * CYW43_FIRMWARE_PARTITION_WINDOW;
+            uint32_t eaddr = saddr + (256 * 1024); // max size expected is 256k
+            uint32_t read_base = XIP_BASE;
+            printf("Rolling %08x %08x %08x\n", saddr, eaddr, read_base);
+        #else
             int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (picked_p << 24));
             hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION));
             hard_assert(ret == 3);
@@ -189,15 +204,19 @@ bool cyw43_driver_init(async_context_t *context) {
             uint32_t location_and_permissions = buffer[1];
             uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu) * FLASH_SECTOR_SIZE;
             uint32_t eaddr = (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1) * FLASH_SECTOR_SIZE;
+            uint32_t read_base = XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE;
+            printf("Not Rolling %08x %08x %08x\n", saddr, eaddr, read_base);
+        #endif
+
             // Starts with metadata block
-            while(saddr < eaddr && *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr) != PICOBIN_BLOCK_MARKER_END) {
+            while(saddr < eaddr && *(uint32_t*)(read_base + saddr) != PICOBIN_BLOCK_MARKER_END) {
                 saddr += 4;
             }
             saddr += 4;
             // Now onto data
-            cyw43_wifi_fw_len = *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr);
-            cyw43_clm_len = *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr + 4);
-            fw_data = XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr + 8;
+            cyw43_wifi_fw_len = *(uint32_t*)(read_base + saddr);
+            cyw43_clm_len = *(uint32_t*)(read_base + saddr + 4);
+            fw_data = read_base + saddr + 8;
         } else {
             CYW43_DEBUG("No CYW43 firmware partition found, so cannot get firmware from partition\n");
             return false;

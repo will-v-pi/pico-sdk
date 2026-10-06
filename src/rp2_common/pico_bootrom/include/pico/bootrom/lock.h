@@ -10,6 +10,28 @@
 #include "hardware/boot_lock.h"
 #include "pico/bootrom_constants.h"
 
+#if PICO_ALLOW_NONSECURE_BOOTROM_LOCKING && PICO_NONSECURE
+// Declarations, as they're used in bootrom.h
+static inline int bootrom_try_acquire_lock(uint lock_num);
+static inline int bootrom_acquire_lock_blocking(uint lock_num);
+static inline int bootrom_release_lock(uint lock_num);
+
+// Then include bootrom.h for rom_secure_call
+#include "pico/bootrom.h"
+
+// Then the actual functions, now rom_secure_call is defined
+static inline int bootrom_try_acquire_lock(uint lock_num) {
+    return rom_secure_call(lock_num, 0, 0, 0, SECURE_CALL_bootrom_try_acquire_lock);
+}
+static inline int bootrom_acquire_lock_blocking(uint lock_num) {
+    return rom_secure_call(lock_num, 0, 0, 0, SECURE_CALL_bootrom_acquire_lock_blocking);
+}
+static inline int bootrom_release_lock(uint lock_num) {
+    return rom_secure_call(lock_num, 0, 0, 0, SECURE_CALL_bootrom_release_lock);
+}
+
+#else
+
 // PICO_CONFIG: PICO_BOOTROM_LOCKING_ENABLED, Enable/disable locking for bootrom functions that use shared resources. If this flag is enabled bootrom lock checking is turned on and BOOT locks are taken around the relevant bootrom functions, type=bool, default=1, group=pico_bootrom
 #ifndef PICO_BOOTROM_LOCKING_ENABLED
 #if NUM_BOOT_LOCKS > 0
@@ -65,5 +87,7 @@ static inline void bootrom_release_lock(uint lock_num) {
     (void)lock_num;
 #endif
 }
+
+#endif
 
 #endif

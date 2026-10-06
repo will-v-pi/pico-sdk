@@ -70,6 +70,26 @@
 #define PICO_ALLOW_NONSECURE_RESETS 0
 #endif
 
+// PICO_CONFIG: PICO_ALLOW_NONSECURE_BOOTROM_LOCKING, Allow non-secure to access bootrom locks, type=bool, default=0, group=pico_bootrom
+#ifndef PICO_ALLOW_NONSECURE_BOOTROM_LOCKING
+#define PICO_ALLOW_NONSECURE_BOOTROM_LOCKING 0
+#endif
+
+// PICO_CONFIG: PICO_ALLOW_NONSECURE_PICK_AB, Allow non-secure to call rom_pick_ab_partition_during_update, type=bool, default=0, group=pico_bootrom
+#ifndef PICO_ALLOW_NONSECURE_PICK_AB
+#define PICO_ALLOW_NONSECURE_PICK_AB 0
+#endif
+
+// PICO_CONFIG: PICO_ALLOW_NONSECURE_ROLL_PARTITION, Allow non-secure to call flash_roll_qmi_add_partition_at_window, type=bool, default=0, group=hardware_flash
+#ifndef PICO_ALLOW_NONSECURE_ROLL_PARTITION
+#define PICO_ALLOW_NONSECURE_ROLL_PARTITION 0
+#endif
+
+// PICO_CONFIG: PICO_ALLOW_NONSECURE_BUY, Allow non-secure to call rom_explicit_buy, type=bool, default=0, group=pico_bootrom
+#ifndef PICO_ALLOW_NONSECURE_BUY
+#define PICO_ALLOW_NONSECURE_BUY 0
+#endif
+
 // PICO_CONFIG: PICO_ALLOW_USER_IRQ, Allow non-secure to request user IRQs, type=bool, default=0, group=hardware_irq
 #ifndef PICO_ALLOW_NONSECURE_USER_IRQ
 #define PICO_ALLOW_NONSECURE_USER_IRQ 0
