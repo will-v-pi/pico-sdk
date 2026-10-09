@@ -10,10 +10,9 @@
 #include "pico/ffs.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <dirent.h>
 #include <string.h>
-
-static char read_buffer[FFS_API_MAX_WRITE_LENGTH];
 
 static void ffs_get_filename(uint file_id, char *buf, size_t buflen) {
     snprintf(buf, buflen, "ffs_%u.dat", file_id);
@@ -51,11 +50,16 @@ int ffs_write(uint file_id, const char *wrdata, uint data_len) {
     return PICO_OK;
 }
 
-int ffs_read(uint file_id, const char **filedata) {
+int ffs_read(uint file_id, char *buf, uint buf_len) {
     FILE *fp;
     char filename[32];
     long file_size;
+    size_t read_len;
     size_t bytes_read;
+
+    if (NULL == buf && 0 != buf_len) {
+        return PICO_ERROR_INVALID_ARG;
+    }
 
     if (file_id > FFS_MAX_VALID_FILE_ID) {
         return PICO_ERROR_GENERIC;
@@ -77,14 +81,14 @@ int ffs_read(uint file_id, const char **filedata) {
         return PICO_ERROR_GENERIC;
     }
 
-    bytes_read = fread(read_buffer, 1, file_size, fp);
+    read_len = (size_t)file_size < buf_len ? (size_t)file_size : buf_len;
+    bytes_read = read_len ? fread(buf, 1, read_len, fp) : 0;
     fclose(fp);
 
-    if (bytes_read != (size_t)file_size) {
+    if (bytes_read != read_len) {
         return PICO_ERROR_GENERIC;
     }
 
-    *filedata = read_buffer;
     return (int)file_size;
 }
 
@@ -142,26 +146,38 @@ int ffs_list(file_info_t file_info[], uint max_infos) {
 
 
 char *ffs_get_string(uint8_t file_id) {
-    const char *data;
-    int rc = ffs_read(file_id, &data);
-    if (rc >= 0 && data) {
-        return strndup(data, rc);
+    int len = ffs_read(file_id, NULL, 0);
+    if (len < 0) {
+        return NULL;
     }
-    return NULL;
+    char *str = malloc((size_t)len + 1);
+    if (!str) {
+        return NULL;
+    }
+    if (ffs_read(file_id, str, (uint)len) != len) {
+        free(str);
+        return NULL;
+    }
+    str[len] = '\0';
+    return str;
 }
 
 
 // Updates the FFS file data if the new value is different from the existing value.
 // If the file does not exist, it is created.
 int ffs_update_string(uint8_t file_id, const char *data) {
-    int data_len = strlen(data);
-    const char *existing_data;
-    int rc = ffs_read(file_id, &existing_data);
-    if (rc == 0 && existing_data) {
-        if (memcmp(existing_data, data, data_len + 1) == 0)
-            return 0;
+    uint data_len = strlen(data) + 1; // Include the null terminator
+    int rc = ffs_read(file_id, NULL, 0);
+    if (rc >= 0 && (uint)rc == data_len) {
+        char *existing_data = malloc(data_len);
+        if (existing_data) {
+            bool matches = ffs_read(file_id, existing_data, data_len) == rc &&
+                           memcmp(existing_data, data, data_len) == 0;
+            free(existing_data);
+            if (matches)
+                return PICO_OK;
+        }
     }
 
-    rc = ffs_write(file_id, data, data_len + 1); // Include the null terminator
-    return rc;
+    return ffs_write(file_id, data, data_len);
 }

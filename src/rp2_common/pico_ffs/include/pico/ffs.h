@@ -80,21 +80,23 @@ int ffs_initialise(void);
 int ffs_write(uint file_id, const char *wrdata, uint data_len);
 
 
-/*! \brief Locate file for reading; set pointer to the data start, return length
+/*! \brief Read a file's data into a buffer, return the file's length
  *  \ingroup pico_ffs
  *
- * If the requested file is found in flash, the supplied pointer will be set
- * to the start address of the specified file's data.  The data length, which
- * can be 0, is the return value.  The caller can de-reference the pointer
- * to read the data, up-to the returned length.  If the file is *not* found,
- * the pointer will not be set and a suitable PICO_ERROR_xxx code returned.
+ * If the requested file is found in flash, up to `buf_len` bytes of the
+ * file's data are copied into `buf`.  The full data length of the file,
+ * which can be 0, is the return value; if this is greater than `buf_len`
+ * the data copied has been truncated.  Passing a NULL `buf` with a `buf_len`
+ * of 0 can be used to find the length of a file without reading it.
+ * If the file is *not* found, a suitable PICO_ERROR_xxx code is returned.
  *
  * \param file_id  The file ID to read. This must be <= FFS_MAX_VALID_FILE_ID
- * \param filedata  A pointer to a pointer to hold the file's data start address.
- * \return          If >= 0, the data length of the file in flash.
- *                  If < 0, one of the PICO_ERROR_xxx codes.
+ * \param buf      Buffer to receive the file's data
+ * \param buf_len  Size of `buf` in bytes
+ * \return         If >= 0, the data length of the file in flash.
+ *                 If < 0, one of the PICO_ERROR_xxx codes.
  */
-int ffs_read(uint file_id, const char **filedata);
+int ffs_read(uint file_id, char *buf, uint buf_len);
 
 
 /*! \brief Deletes a file, specified by its file ID.

@@ -30,13 +30,9 @@ Must and will, use and retrieve, **flash offset** values to identify flash locat
 
 The ffs module largely makes use of offset values and most variables are named as such and use the `uint32_t` type.
 
-But, directly reading from flash, by execution and/or de-referencing a pointer, requires a flash **memory address** (rather than an offset).  On RP2xxx the flash memory addresses start at `0x10000000` and the memory itself may "reflect" multiple times after this address depending on flash size, device and device set-up.
+ffs never reads flash by de-referencing a pointer to memory mapped flash.  All flash accesses, reads included, are made via the bootrom flash API (`rom_flash_op()` on RP2350), which takes **untranslated** flash storage addresses.  This means ffs is unaffected by any flash address translation in effect (on RP2350+ a different area of flash may be remapped to appear at `0x10000000`), and file data is always copied into RAM to be used.
 
-An additional complication is that on RP2350+, it is possible to *re*map a different area of flash memory to (appear) to start at `0x10000000`.  This is to be able execute separate, but identically built and located images, directly from flash.
-
-To allow ffs to operate on RP2350+ within a flash remapped runtime environment, the source code makes use of the **un**remapped flash memory access provided by the device hardware and located at `0x14000000`.
-
-The ffs source code defines the `FL_OFFSET_TO_READ_ADDR(_o)` macro which is used to generate memory pointer values from a flash offsets and obfuscate the above detail from (most) of the source.  The ffs design does not ever need to convert from a memory address to a flash offset.
+The ffs source code defines the `FL_OFFSET_TO_ADDR(_o)` macro to convert a flash offset into the storage address required by the bootrom flash API.  The ffs design does not ever need to convert from a memory address to a flash offset.
 
 ### Organisation of ffs flash storage
 For its operation, ffs requires a dedicated area of flash memory to be organised into **two** discrete "chunks".  At any point, *one* chunk will be used to store new records in flash, the other chunk is left pre-prepared but fallow.
@@ -98,7 +94,7 @@ This system design ensures there is only **one** identifiable copy of each uniqu
 
 ### Atomicity
 There is no concept of "opening a file" for subsequent read or write. Files in ffs are read, written, erased and listed in atomic and synchronous operations.
-All data must be supplied to write a file, files can be read (direct from flash) using the supplied pointer up to the reported length of the file.  Due to the amount of context data held within the module, ffs is explicitly *not* threadsafe.
+All data must be supplied to write a file, files are read by copying their data from flash into a caller supplied buffer.  Due to the amount of context data held within the module, ffs is explicitly *not* threadsafe.
 
 ### Dimensions
 The ffs code is designed around some basic assumptions controlled by:
