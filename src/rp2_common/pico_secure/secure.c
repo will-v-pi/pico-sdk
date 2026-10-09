@@ -118,6 +118,14 @@ void __attribute__((noreturn)) secure_launch_nonsecure_binary_default() {
 
 static secure_hardfault_callback_t hardfault_callback = NULL;
 
+#if PICO_ADD_NONSECURE_FLASH_ERASE_HELPER
+static bool nonsecure_flash_erase_helper_enabled = false;
+
+void secure_set_nonsecure_flash_erase_helper_enabled(bool enabled) {
+    nonsecure_flash_erase_helper_enabled = enabled;
+}
+#endif
+
 
 static void secure_hardfault_handler(void) {
     printf("Hard fault occurred\n");
@@ -582,6 +590,35 @@ int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_
             int ret = flash_roll_qmi_add_partition_at_window((int)a, &b_val, c);
             *(int*)b = b_val;
             return ret;
+        }
+    #endif
+    #if PICO_ALLOW_NONSECURE_UF2_TARGET_PARTITION
+        case SECURE_CALL_rom_get_uf2_target_partition: {
+            uint32_t valid = RCP_MASK_FALSE;
+            rom_validate_ns_buffer((uint8_t*)a, b, RCP_MASK_TRUE, &valid);
+            if (!rcp_is_true(valid)) return BOOTROM_ERROR_INVALID_ADDRESS;
+            valid = RCP_MASK_FALSE;
+            rom_validate_ns_buffer((resident_partition_t*)d, sizeof(resident_partition_t), RCP_MASK_TRUE, &valid);
+            if (!rcp_is_true(valid)) return BOOTROM_ERROR_INVALID_ADDRESS;
+            // Non-secure can't flush the XIP cache, but may have just written to flash
+            rom_flash_flush_cache();
+            return rom_get_uf2_target_partition((uint8_t*)a, b, c, (resident_partition_t*)d);
+        }
+    #endif
+    #if PICO_ADD_NONSECURE_FLASH_ERASE_HELPER
+        case SECURE_CALL_rom_flash_op_erase: {
+            // The RP2350 A2 bootrom faults on all non-secure flash_op erase operations, so perform the
+            // erase here, with the same checks as the bootrom's non-secure flash_op
+            if (!nonsecure_flash_erase_helper_enabled) {
+                return BOOTROM_ERROR_NOT_PERMITTED;
+            }
+            if ((a & ~CFLASH_FLAGS_BITS) ||
+                ((a & CFLASH_OP_BITS) >> CFLASH_OP_LSB) != CFLASH_OP_VALUE_ERASE ||
+                ((a & CFLASH_SECLEVEL_BITS) >> CFLASH_SECLEVEL_LSB) != CFLASH_SECLEVEL_VALUE_NONSECURE ||
+                d != 0) {
+                return BOOTROM_ERROR_INVALID_ARG;
+            }
+            return rom_flash_op((cflash_flags_t){.flags = a}, b, c, NULL);
         }
     #endif
     #if PICO_ALLOW_NONSECURE_BUY

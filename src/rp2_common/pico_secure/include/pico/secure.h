@@ -78,6 +78,22 @@ void secure_launch_nonsecure_binary_default(void);
  */
 void secure_sau_set_enabled(bool enabled);
 
+#if PICO_ADD_NONSECURE_FLASH_ERASE_HELPER || PICO_COMBINED_DOCS
+/*! \brief  Set non-secure flash erase helper enabled
+ *  \ingroup pico_secure
+ *
+ * The RP2350 A2 bootrom faults on all non-secure flash_op erase operations, so when this helper is
+ * enabled, non-secure rom_flash_op() erase operations are performed by secure instead. They are still
+ * checked against the non-secure partition permissions, as for a non-secure flash_op.
+ *
+ * This should be enabled if non-secure is given access to the bootrom flash_op function, using
+ * rom_set_ns_api_permission(BOOTROM_NS_API_checked_flash_op, true)
+ *
+ * \param enabled Whether the non-secure flash erase helper is enabled
+ */
+void secure_set_nonsecure_flash_erase_helper_enabled(bool enabled);
+#endif
+
 
 typedef void (*secure_hardfault_callback_t)(void);
 

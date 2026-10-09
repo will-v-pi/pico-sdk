@@ -406,6 +406,10 @@ typedef struct cflash_flags {
 #define SECURE_CALL_rom_explicit_buy                            SECURE_CALL_WELL_KNOWN_CODE('R', 'E', 'B', 'F')
 
 #define SECURE_CALL_flash_roll_qmi_add_partition_at_window      SECURE_CALL_WELL_KNOWN_CODE('F', 'R', 'P', 'W')
+
+#define SECURE_CALL_rom_get_uf2_target_partition                SECURE_CALL_WELL_KNOWN_CODE('G', 'U', 'T', 'P')
+
+#define SECURE_CALL_rom_flash_op_erase                          SECURE_CALL_WELL_KNOWN_CODE('F', 'O', 'E', 'R')
 #endif
 
 #endif

@@ -64,6 +64,9 @@ endif()
 #
 # The update UF2s and sha256sums are copied to the UPDATE_DIR, which defaults
 # to ${CMAKE_CURRENT_LIST_DIR}/updates (which is in the source tree).
+# For the trustzone configuration, the update UF2 is the NonSecure UF2 followed
+# by the TBYB Secure UF2, concatenated together - the NonSecure partitions have
+# no_reboot_on_uf2_download set, so both are written before rebooting.
 # The UF2 filename will include the major, minor, and rollback versions,
 # and by default also includes the date and PICO_BOARD - these can be
 # disabled using NO_DATE and NO_BOARD
@@ -205,7 +208,14 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
         set(update_suffix "${update_suffix}-${current_date}")
     endif()
 
-    pico_add_tbyb_uf2(${TARGET} OUTTARGET ${TARGET}_update OUTFILE ${OPT_UPDATE_DIR}/${TARGET}${update_suffix}.uf2)
+    if (CONFIGURATION STREQUAL "trustzone")
+        # NonSecure (not TBYB, as it's not booted directly) followed by TBYB Secure
+        pico_add_tbyb_uf2(${OPT_SECURE_TARGET} OUTTARGET ${TARGET}_secure_tbyb)
+        pico_concatenate_uf2_outputs(${TARGET}_update ${TARGET} ${TARGET}_secure_tbyb
+            OUTFILE ${OPT_UPDATE_DIR}/${TARGET}${update_suffix}.uf2)
+    else()
+        pico_add_tbyb_uf2(${TARGET} OUTTARGET ${TARGET}_update OUTFILE ${OPT_UPDATE_DIR}/${TARGET}${update_suffix}.uf2)
+    endif()
     pico_add_uf2_sha256sum(${TARGET}_update)
     add_dependencies(${OPT_COMBINED_TARGET} ${TARGET}_update ${TARGET}_update_sha256sum)
 

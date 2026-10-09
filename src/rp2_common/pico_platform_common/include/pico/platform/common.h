@@ -90,6 +90,11 @@
 #define PICO_ALLOW_NONSECURE_BUY 0
 #endif
 
+// PICO_CONFIG: PICO_ALLOW_NONSECURE_UF2_TARGET_PARTITION, Allow non-secure to call rom_get_uf2_target_partition, type=bool, default=0, group=pico_bootrom
+#ifndef PICO_ALLOW_NONSECURE_UF2_TARGET_PARTITION
+#define PICO_ALLOW_NONSECURE_UF2_TARGET_PARTITION 0
+#endif
+
 // PICO_CONFIG: PICO_ALLOW_USER_IRQ, Allow non-secure to request user IRQs, type=bool, default=0, group=hardware_irq
 #ifndef PICO_ALLOW_NONSECURE_USER_IRQ
 #define PICO_ALLOW_NONSECURE_USER_IRQ 0

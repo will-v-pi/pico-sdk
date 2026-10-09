@@ -663,6 +663,13 @@ static inline void rom_helper_flash_op(void *param) {
  * \param buf contains data to be written to flash, for program operations, and data read back from flash, for read operations
  */
 static inline int rom_flash_op(cflash_flags_t flags, uintptr_t addr, uint32_t size_bytes, uint8_t *buf) {
+#if PICO_ADD_NONSECURE_FLASH_ERASE_HELPER && PICO_NONSECURE
+    // The RP2350 A2 bootrom faults on all non-secure flash_op erase operations, so secure performs
+    // the erase (checked against the non-secure permissions, as for a non-secure flash_op)
+    if (((flags.flags & CFLASH_OP_BITS) >> CFLASH_OP_LSB) == CFLASH_OP_VALUE_ERASE) {
+        return rom_secure_call(flags.flags, addr, size_bytes, (uint32_t)buf, SECURE_CALL_rom_flash_op_erase);
+    }
+#endif
     if (!bootrom_try_acquire_lock(BOOTROM_LOCK_FLASH_OP))
         return BOOTROM_ERROR_LOCK_REQUIRED;
     int rc = 0;
@@ -892,6 +899,12 @@ int rom_get_owned_partition(uint partition_num);
  * \param family_id the family ID to place
  * \param partition_out pointer to the resident_partition_t to fill with the partition data
  */
+#if PICO_ALLOW_NONSECURE_UF2_TARGET_PARTITION && PICO_NONSECURE
+static inline int rom_get_uf2_target_partition(uint8_t *workarea_base, uint32_t workarea_size, uint32_t family_id, resident_partition_t *partition_out) {
+    // Note: secure flushes the XIP cache before getting the target partition
+    return rom_secure_call((uint32_t)workarea_base, workarea_size, family_id, (uint32_t)partition_out, SECURE_CALL_rom_get_uf2_target_partition);
+}
+#else
 static inline int rom_get_uf2_target_partition(uint8_t *workarea_base, uint32_t workarea_size, uint32_t family_id, resident_partition_t *partition_out) {
     rom_get_uf2_target_partition_fn func = (rom_get_uf2_target_partition_fn) rom_func_lookup_inline(ROM_FUNC_GET_UF2_TARGET_PARTITION);
     if (!bootrom_try_acquire_lock(BOOTROM_LOCK_SHA_256))
@@ -900,6 +913,7 @@ static inline int rom_get_uf2_target_partition(uint8_t *workarea_base, uint32_t 
     bootrom_release_lock(BOOTROM_LOCK_SHA_256);
     return rc;
 }
+#endif
 
 /*!
  * \brief Translate runtime to storage address

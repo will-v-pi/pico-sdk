@@ -37,13 +37,14 @@ if (NOT TARGET pico_secure)
     # - PICK_AB: Allow non-secure to call rom_pick_ab_partition_during_update
     # - ROLL_PARTITION: Allow non-secure to call flash_roll_qmi_add_partition_at_window
     # - BUY: Allow non-secure to call rom_explicit_buy
+    # - UF2_TARGET_PARTITION: Allow non-secure to call rom_get_uf2_target_partition
     # - NONSECURE_TIMER <index>: Assign specified timer to non-secure
     #
     # \param\ SECURE_TARGET The secure target
     # \param\ NONSECURE_TARGET The non-secure target
     # \param\ OPTIONS The options to set
     function(pico_set_security_options SECURE_TARGET NONSECURE_TARGET)
-        set(options STDIO RAND DMA USER_IRQ PIO GPIO USB RESETS BOOTROM_LOCKING PICK_AB ROLL_PARTITION BUY)
+        set(options STDIO RAND DMA USER_IRQ PIO GPIO USB RESETS BOOTROM_LOCKING PICK_AB ROLL_PARTITION BUY UF2_TARGET_PARTITION)
         set(oneValueArgs NONSECURE_TIMER)
         cmake_parse_arguments(PARSE_ARGV 2 OPTS "${options}" "${oneValueArgs}" "")
 
