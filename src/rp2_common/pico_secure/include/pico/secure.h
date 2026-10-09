@@ -183,6 +183,19 @@ int pio_request_unused_pio_from_secure(void);
 #endif
 #endif
 
+#if (PICO_ALLOW_NONSECURE_BUY && PICO_SECURE) || PICO_COMBINED_DOCS
+/*! \brief  Decide whether to allow a non-secure request to buy the current image
+ *  \ingroup pico_secure
+ *
+ * Called by secure when non-secure calls rom_explicit_buy(), before the image is bought. The default
+ * implementation always allows the buy, but this weak function can be overridden to add additional
+ * secure side checks (for example, that the non-secure application has reached a known good state).
+ *
+ * \return true to buy the image, false to refuse (rom_explicit_buy() then returns BOOTROM_ERROR_NOT_PERMITTED)
+ */
+bool secure_allow_nonsecure_buy(void);
+#endif
+
 #if (PICO_ALLOW_NONSECURE_ROLL_PARTITION && PICO_SECURE) || PICO_COMBINED_DOCS
 #include "hardware/flash.h"
 

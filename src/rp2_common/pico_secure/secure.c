@@ -471,7 +471,7 @@ int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_
     #if PICO_ALLOW_NONSECURE_STDIO
         case SECURE_CALL_stdio_out_chars: {
             uint32_t ok = RCP_MASK_FALSE;
-            rom_validate_ns_buffer((char*)a, b, RCP_MASK_TRUE, &ok);
+            rom_validate_ns_buffer((char*)a, b, RCP_MASK_FALSE, &ok);
             if (ok != RCP_MASK_TRUE) return BOOTROM_ERROR_NOT_PERMITTED;
             stdio_put_string((char*)a, b, false, true);
             stdio_flush();
@@ -570,7 +570,7 @@ int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_
     #if PICO_ALLOW_NONSECURE_PICK_AB
         case SECURE_CALL_rom_pick_ab_partition_during_update: {
             uint32_t valid = RCP_MASK_FALSE;
-            rom_validate_ns_buffer((uint32_t*)a, b, RCP_MASK_FALSE, &valid);
+            rom_validate_ns_buffer((uint32_t*)a, b, RCP_MASK_TRUE, &valid);
             if (!rcp_is_true(valid)) return BOOTROM_ERROR_INVALID_ADDRESS;
             return rom_pick_ab_partition_during_update((uint32_t*)a, b, c);
         }
@@ -624,8 +624,9 @@ int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_
     #if PICO_ALLOW_NONSECURE_BUY
         case SECURE_CALL_rom_explicit_buy: {
             uint32_t valid = RCP_MASK_FALSE;
-            rom_validate_ns_buffer((uint8_t*)a, b, RCP_MASK_FALSE, &valid);
+            rom_validate_ns_buffer((uint8_t*)a, b, RCP_MASK_TRUE, &valid);
             if (!rcp_is_true(valid)) return BOOTROM_ERROR_INVALID_ADDRESS;
+            if (!secure_allow_nonsecure_buy()) return BOOTROM_ERROR_NOT_PERMITTED;
             return rom_explicit_buy((uint8_t*)a, b);
         }
     #endif
@@ -645,6 +646,12 @@ static int __attribute__((naked)) rom_default_asm_callback() {
         "pop {r1, pc}\n"
     );
 }
+
+#if PICO_ALLOW_NONSECURE_BUY
+bool __weak secure_allow_nonsecure_buy(void) {
+    return true;
+}
+#endif
 
 void __weak runtime_init_rom_set_default_callback() {
     rom_set_rom_callback(BOOTROM_API_CALLBACK_secure_call, (bootrom_api_callback_generic_t) rom_default_asm_callback);
