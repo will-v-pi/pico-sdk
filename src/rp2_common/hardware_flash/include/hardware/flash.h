@@ -329,9 +329,11 @@ void flash_program_invalid_block_to_b_partition(uint pi_a);
  * while keeping the untranslated XIP window inaccessible.
  * 
  * \param partition_num the partition number
- * \return BOOTROM_OK on success, otherwise a negative error code
+ * \param window the window to use
+ * \param clear_after whether to clear all windows after the used one
+ * \return size of partition on success, otherwise a negative error code
  */
-int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window);
+int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window, bool clear_after);
 
 /*!
  * \brief Roll QMI to a partition
@@ -343,10 +345,10 @@ int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window);
  * using A/B partitions.
  * 
  * \param partition_num the partition number
- * \return BOOTROM_OK on success, otherwise a negative error code
+ * \return size of partition on success, otherwise a negative error code
  */
 static inline int flash_roll_qmi_to_partition(uint partition_num) {
-    flash_roll_qmi_add_partition_at_window(partition_num, 0);
+    return flash_roll_qmi_add_partition_at_window(partition_num, 0, true);
 }
 
 #endif // !PICO_RP2040 || PICO_COMBINED_DOCS

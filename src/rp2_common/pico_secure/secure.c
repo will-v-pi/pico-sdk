@@ -569,8 +569,8 @@ int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_
     #endif
     #if PICO_ALLOW_NONSECURE_ROLL_PARTITION
         case SECURE_CALL_flash_roll_qmi_add_partition_at_window: {
-            if (b > PICO_ALLOW_NONSECURE_QMI_WINDOW_MAX) return BOOTROM_ERROR_NOT_PERMITTED;
-            return flash_roll_qmi_add_partition_at_window(a, b);
+            if (b < PICO_ALLOW_NONSECURE_QMI_WINDOW_MIN) return BOOTROM_ERROR_NOT_PERMITTED;
+            return flash_roll_qmi_add_partition_at_window(a, b, c);
         }
     #endif
     #if PICO_ALLOW_NONSECURE_BUY

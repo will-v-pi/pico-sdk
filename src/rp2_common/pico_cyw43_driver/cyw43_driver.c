@@ -189,7 +189,7 @@ bool cyw43_driver_init(async_context_t *context) {
             CYW43_DEBUG("Chosen CYW43 firmware in partition %d\n", picked_p);
         
         #if PICO_NONSECURE
-            int ret = flash_roll_qmi_add_partition_at_window(picked_p, CYW43_FIRMWARE_PARTITION_WINDOW);
+            int ret = flash_roll_qmi_add_partition_at_window(picked_p, CYW43_FIRMWARE_PARTITION_WINDOW, false);
             hard_assert(ret == BOOTROM_OK);
 
             uint32_t saddr = (4 * 1024 * 1024) * CYW43_FIRMWARE_PARTITION_WINDOW;

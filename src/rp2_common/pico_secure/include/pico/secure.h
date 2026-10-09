@@ -170,9 +170,9 @@ int pio_request_unused_pio_from_secure(void);
 #if (PICO_ALLOW_NONSECURE_ROLL_PARTITION && PICO_SECURE) || PICO_COMBINED_DOCS
 #include "hardware/flash.h"
 
-// PICO_CONFIG: PICO_ALLOW_NONSECURE_QMI_WINDOW_MAX, Max QMI window that can be configured by non-secure, type=int, default=3, group=hardware_flash
-#ifndef PICO_ALLOW_NONSECURE_QMI_WINDOW_MAX
-#define PICO_ALLOW_NONSECURE_QMI_WINDOW_MAX 3
+// PICO_CONFIG: PICO_ALLOW_NONSECURE_QMI_WINDOW_MIN, Min QMI window that can be configured by non-secure, type=int, default=1, group=hardware_flash
+#ifndef PICO_ALLOW_NONSECURE_QMI_WINDOW_MIN
+#define PICO_ALLOW_NONSECURE_QMI_WINDOW_MIN 1
 #endif
 #endif
 

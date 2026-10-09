@@ -485,43 +485,34 @@ void flash_program_invalid_block_to_b_partition(uint pi_a) {
 
 #if PICO_NONSECURE
 #if PICO_ALLOW_NONSECURE_ROLL_PARTITION
-int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window) {
-    return rom_secure_call(partition_num, window, 0, 0, SECURE_CALL_flash_roll_qmi_add_partition_at_window);
+int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window, bool clear_after) {
+    return rom_secure_call(partition_num, window, clear_after, 0, SECURE_CALL_flash_roll_qmi_add_partition_at_window);
 }
 #else
-int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window) {
+int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window, bool clear_after) {
     panic_unsupported();
 }
 #endif
 #else
-int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window) {
+int flash_roll_qmi_add_partition_at_window(uint partition_num, int window, bool clear_after) {
     uint32_t buffer[2 + 1] = {}; // 2 words for the partition location and flags, plus 1
     int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (partition_num << 24));
     if (ret < 0) return ret;
 
     uint32_t location_and_permissions = buffer[1];
-    uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu) * FLASH_SECTOR_SIZE;
-    uint32_t eaddr = (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1) * FLASH_SECTOR_SIZE;
+    uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu);
+    uint32_t eaddr = (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1);
 
-    int32_t roll = (int32_t)saddr;
-    if (roll) {
-        if ((uint32_t)roll & (FLASH_SECTOR_SIZE - 1u)) return BOOTROM_ERROR_BAD_ALIGNMENT;
-        roll >>= FLASH_SECTOR_SHIFT;
-        int32_t size = (int32_t)((eaddr - saddr) >> FLASH_SECTOR_SHIFT);
-        for (uint i = window; i < 4; i++) {
-            static_assert(4 * 1024 * 1024 / FLASH_SECTOR_SIZE == 0x400, "Expected 4 MiB / FLASH_SECTOR_SIZE = 0x400");
-            if (roll < 0) {
-                roll += 0x400;
-                qmi_hw->atrans[i] = 0;
-            } else {
-                int32_t this_size = MIN(size, 0x400);
-                qmi_hw->atrans[i] = (uint)((this_size << 16) | roll);
-                size -= this_size;
-                roll += this_size;
-            }
-        }
+    uint32_t roll = saddr;
+    uint32_t size = (eaddr - saddr);
+    for (uint i = (uint)window; i < 4; i++) {
+        uint32_t this_size = MIN(size, QMI_ATRANS0_SIZE_RESET);
+        qmi_hw->atrans[i] = (uint32_t)((this_size << QMI_ATRANS0_SIZE_LSB) | (roll << QMI_ATRANS0_BASE_LSB));
+        size -= this_size;
+        roll += this_size;
+        if (size <= 0 && !clear_after) break;
     }
-    return BOOTROM_OK;
+    return eaddr - saddr;
 }
 #endif
 
