@@ -105,7 +105,7 @@ typedef void (*secure_hardfault_callback_t)(void);
 void secure_install_default_hardfault_handler(secure_hardfault_callback_t callback);
 
 
-// PICO_CONFIG: PICO_MAX_SECURE_CALL_USER_CALLBACKS, Maximum number of secure call user callbacks, default=4, advanced=true, group=pico_bootrom
+// PICO_CONFIG: PICO_MAX_SECURE_CALL_USER_CALLBACKS, Maximum number of secure call callbacks added with rom_secure_call_add_callback() or rom_secure_call_add_user_callback(), default=4, advanced=true, group=pico_bootrom
 #ifndef PICO_MAX_SECURE_CALL_USER_CALLBACKS
 #define PICO_MAX_SECURE_CALL_USER_CALLBACKS 4
 #endif
@@ -116,22 +116,44 @@ void secure_install_default_hardfault_handler(secure_hardfault_callback_t callba
 typedef int (*rom_secure_call_callback_t)(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t fn);
 
 /*!
+ * \brief Add ROM callback function for a set of function codes
+ * \ingroup pico_bootrom
+ *
+ * Add a callback for rom_secure_call called for all function codes where `(code & fn_mask) == fn`. This
+ * allows SDK libraries to provide "well known" functions (see \ref SECURE_CALL_WELL_KNOWN_CODE) at runtime,
+ * in addition to the functions built into the default secure call handler. The built-in functions take
+ * precedence, so a callback cannot replace them.
+ *
+ * \param callback pointer to the callback function
+ * \param fn the function code(s) this callback handles
+ * \param fn_mask the bits of the function code to compare against fn
+ * \return BOOTROM_OK on success, BOOTROM_ERROR_INVALID_ARG if the arguments are invalid or the function codes overlap
+ *         with an existing callback, or BOOTROM_ERROR_BUFFER_TOO_SMALL if PICO_MAX_SECURE_CALL_USER_CALLBACKS
+ *         callbacks have already been added
+ */
+int rom_secure_call_add_callback(rom_secure_call_callback_t callback, uint32_t fn, uint32_t fn_mask);
+
+/*!
  * \brief Add user ROM callback function
  * \ingroup pico_bootrom
- * 
+ *
  * Add a user callback for rom_secure_call called if using a function code starting with `0b1xxx`,
  * which is a "unique" or "private" function as specified by the rom_secure_call() documentation.
- * 
+ *
+ * This is equivalent to `rom_secure_call_add_callback(callback, fn_mask << 16, 0xffff0000)`
+ *
  * \param callback pointer to the callback function
- * \param fn_mask first 16 bits of fn codes this callback handles
+ * \param fn_mask first 16 bits of fn codes this callback handles, which must have the top bit set
+ * \return as for rom_secure_call_add_callback()
  */
 int rom_secure_call_add_user_callback(rom_secure_call_callback_t callback, uint16_t fn_mask);
 
 /*!
  * \brief Remove user ROM callback function
  * \ingroup pico_bootrom
- * 
- * Remove a user callback for rom_secure_call which was previously added with rom_secure_call_add_user_callback()
+ *
+ * Remove a callback for rom_secure_call which was previously added with rom_secure_call_add_callback() or
+ * rom_secure_call_add_user_callback()
  * 
  * \param callback pointer to the callback function
  */

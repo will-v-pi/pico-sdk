@@ -410,6 +410,15 @@ typedef struct cflash_flags {
 #define SECURE_CALL_rom_get_uf2_target_partition                SECURE_CALL_WELL_KNOWN_CODE('G', 'U', 'T', 'P')
 
 #define SECURE_CALL_rom_flash_op_erase                          SECURE_CALL_WELL_KNOWN_CODE('F', 'O', 'E', 'R')
+
+// Mask of the first three characters of a well known code, for libraries which add a group of codes with rom_secure_call_add_callback()
+#define SECURE_CALL_WELL_KNOWN_GROUP_MASK                       SECURE_CALL_WELL_KNOWN_CODE(0xff, 0xff, 0xff, 0)
+
+// Added by rpi_connect_identity_secure_init()
+#define SECURE_CALL_rpi_connect_identity_group                  SECURE_CALL_WELL_KNOWN_CODE('R', 'C', 'I', 0)
+#define SECURE_CALL_rpi_connect_identity_key_available          SECURE_CALL_WELL_KNOWN_CODE('R', 'C', 'I', 'A')
+#define SECURE_CALL_rpi_connect_identity_get_public_key         SECURE_CALL_WELL_KNOWN_CODE('R', 'C', 'I', 'P')
+#define SECURE_CALL_rpi_connect_identity_sign_exchange          SECURE_CALL_WELL_KNOWN_CODE('R', 'C', 'I', 'X')
 #endif
 
 #endif

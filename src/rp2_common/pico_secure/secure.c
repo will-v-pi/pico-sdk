@@ -192,21 +192,26 @@ void secure_install_default_hardfault_handler(secure_hardfault_callback_t callba
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, secure_hardfault_handler);
 }
 
-struct rom_secure_call_user_callback_slot {
-    uint16_t fn_mask;
+struct rom_secure_call_callback_slot {
+    uint32_t fn;
+    uint32_t fn_mask;
     rom_secure_call_callback_t callback;
-} rom_secure_call_user_callback_slots[PICO_MAX_SECURE_CALL_USER_CALLBACKS];
+} rom_secure_call_callback_slots[PICO_MAX_SECURE_CALL_USER_CALLBACKS];
 
-int rom_secure_call_add_user_callback(rom_secure_call_callback_t callback, uint16_t fn_mask) {
+int rom_secure_call_add_callback(rom_secure_call_callback_t callback, uint32_t fn, uint32_t fn_mask) {
+    if (!callback || !fn_mask || (fn & ~fn_mask)) {
+        return BOOTROM_ERROR_INVALID_ARG;
+    }
+
     int first_unused = PICO_MAX_SECURE_CALL_USER_CALLBACKS;
     for (int i=0; i < PICO_MAX_SECURE_CALL_USER_CALLBACKS; i++) {
-        if (!rom_secure_call_user_callback_slots[i].fn_mask) {
+        if (!rom_secure_call_callback_slots[i].callback) {
             if (first_unused == PICO_MAX_SECURE_CALL_USER_CALLBACKS) first_unused = i;
             continue;
         }
 
-        // Check new function is not an existing function mask
-        if (rom_secure_call_user_callback_slots[i].fn_mask == fn_mask) {
+        // Check new function codes don't overlap with existing function codes
+        if (!((rom_secure_call_callback_slots[i].fn ^ fn) & rom_secure_call_callback_slots[i].fn_mask & fn_mask)) {
             return BOOTROM_ERROR_INVALID_ARG;
         }
     }
@@ -216,18 +221,27 @@ int rom_secure_call_add_user_callback(rom_secure_call_callback_t callback, uint1
         return BOOTROM_ERROR_BUFFER_TOO_SMALL;
     }
 
-    rom_secure_call_user_callback_slots[first_unused].callback = callback;
-    rom_secure_call_user_callback_slots[first_unused].fn_mask = fn_mask;
+    rom_secure_call_callback_slots[first_unused].fn = fn;
+    rom_secure_call_callback_slots[first_unused].fn_mask = fn_mask;
+    rom_secure_call_callback_slots[first_unused].callback = callback;
 
     return BOOTROM_OK;
 }
 
+int rom_secure_call_add_user_callback(rom_secure_call_callback_t callback, uint16_t fn_mask) {
+    // User callbacks all start with 0b1xxx, as specified by the rom_secure_call() documentation
+    if (!(fn_mask & 0x8000u)) {
+        return BOOTROM_ERROR_INVALID_ARG;
+    }
+    return rom_secure_call_add_callback(callback, (uint32_t)fn_mask << 16, 0xffff0000u);
+}
+
 void rom_secure_call_remove_user_callback(rom_secure_call_callback_t callback) {
     for (int i=0; i < PICO_MAX_SECURE_CALL_USER_CALLBACKS; i++) {
-        if (rom_secure_call_user_callback_slots[i].callback == callback) {
-            rom_secure_call_user_callback_slots[i].callback = NULL;
-            rom_secure_call_user_callback_slots[i].fn_mask = 0;
-            return;
+        if (rom_secure_call_callback_slots[i].callback == callback) {
+            rom_secure_call_callback_slots[i].callback = NULL;
+            rom_secure_call_callback_slots[i].fn = 0;
+            rom_secure_call_callback_slots[i].fn_mask = 0;
         }
     }
 }
@@ -456,17 +470,6 @@ PICO_RUNTIME_INIT_FUNC_HW(runtime_init_nonsecure_accessctrl_and_irqs, PICO_RUNTI
 #include "hardware/structs/accessctrl.h"
 
 int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t fn) {
-    if (fn >> 31) {
-        // User callbacks all start with 0b1xxx, as specified by the rom_secure_call() documentation
-        for (int i=0; i < PICO_MAX_SECURE_CALL_USER_CALLBACKS; i++) {
-            if ((fn >> 16) == rom_secure_call_user_callback_slots[i].fn_mask) {
-                return rom_secure_call_user_callback_slots[i].callback(a, b, c, d, fn);
-            }
-        }
-
-        return BOOTROM_ERROR_INVALID_ARG;
-    }
-
     switch (fn) {
     #if PICO_ALLOW_NONSECURE_STDIO
         case SECURE_CALL_stdio_out_chars: {
@@ -631,7 +634,14 @@ int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_
         }
     #endif
         default: {
-            printf("%08x is not a supported rom function\n", fn);
+            // Callbacks added at runtime, which can't override the built-in functions above
+            for (int i=0; i < PICO_MAX_SECURE_CALL_USER_CALLBACKS; i++) {
+                if (rom_secure_call_callback_slots[i].callback &&
+                    (fn & rom_secure_call_callback_slots[i].fn_mask) == rom_secure_call_callback_slots[i].fn) {
+                    return rom_secure_call_callback_slots[i].callback(a, b, c, d, fn);
+                }
+            }
+            if (!(fn >> 31)) printf("%08x is not a supported rom function\n", fn);
             return BOOTROM_ERROR_INVALID_ARG;
         }
 

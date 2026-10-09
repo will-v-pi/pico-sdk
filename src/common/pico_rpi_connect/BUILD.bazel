@@ -3,6 +3,31 @@ load("//bazel:defs.bzl", "compatible_with_rp2")
 
 package(default_visibility = ["//visibility:public"])
 
+# The only code which handles the device identity private key. In a TrustZone
+# build, link this into the Secure binary and call rpi_connect_identity_secure_init();
+# the Non-secure build of it is just secure calls to the Secure binary.
+cc_library(
+    name = "pico_rpi_connect_identity_key",
+    srcs = [
+        "rpi_connect_identity.c",
+        "rpi_connect_identity_internal.h",
+        "rpi_connect_identity_key.c",
+    ],
+    hdrs = ["include/pico/rpi_connect_identity.h"],
+    includes = ["include"],
+    # OTP row holding the 32-byte P-256 device identity private key.
+    # Override on the command line with
+    # --copt=-DRPI_CONNECT_IDENTITY_OTP_ROW=0x... (a later -D wins).
+    local_defines = ["RPI_CONNECT_IDENTITY_OTP_ROW=0xc0"],
+    target_compatible_with = compatible_with_rp2(),
+    deps = [
+        "//src/rp2_common/hardware_rcp",
+        "//src/rp2_common/pico_bootrom",
+        "//src/rp2_common/pico_mbedtls",
+        "//src/rp2_common/pico_unique_id",
+    ],
+)
+
 cc_library(
     name = "pico_rpi_connect",
     srcs = [
@@ -17,19 +42,20 @@ cc_library(
         "rpi_connect.c",
         "rpi_connect_ca_cert.h",
         "rpi_connect_http.c",
+        "rpi_connect_identity_internal.h",
         "slist.c",
         "slist.h",
     ],
     hdrs = [
         "include/pico/rpi_connect.h",
+        "include/pico/rpi_connect_identity.h",
         "include/pico/rpi_connect_util.h",
-        # connect_crypto.h is not part of the public include/ dir, but the
-        # OTA library uses it for deriving the public key during the
-        # device-identity-exchange, so it is exported here.
+        # connect_crypto.h is not part of the public include/ dir, but is
+        # exported for tools (matching the CMake target_include_directories).
         "connect_crypto.h",
     ],
     # "include" exposes the public pico/ headers; "." exposes connect_crypto.h
-    # to the OTA library (matching the CMake target_include_directories).
+    # (matching the CMake target_include_directories).
     includes = [
         ".",
         "include",
@@ -46,6 +72,7 @@ cc_library(
         "//src/rp2_common/pico_lwip:pico_lwip_http",
         "//src/rp2_common/pico_mbedtls",
         "//src/rp2_common/pico_stdlib",
+        ":pico_rpi_connect_identity_key",
     ],
 )
 
@@ -65,12 +92,16 @@ cc_library(
         "request_internal.h",
         "rpi_connect.c",
         "rpi_connect_ca_cert.h",
+        "rpi_connect_identity.c",
+        "rpi_connect_identity_internal.h",
+        "rpi_connect_identity_key_host.c",
         "slist.c",
         "slist.h",
     ],
     hdrs = [
         "connect_crypto.h",
         "include/pico/rpi_connect.h",
+        "include/pico/rpi_connect_identity.h",
         "include/pico/rpi_connect_util.h",
     ],
     includes = [

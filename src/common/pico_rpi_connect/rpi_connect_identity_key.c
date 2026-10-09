@@ -1,0 +1,242 @@
+/*
+ * Copyright (c) 2025 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+// Device implementation of the device identity key functions. These are the only functions which
+// handle the private key. In a TrustZone build they are only built into the Secure binary, and the
+// Non-secure versions are secure calls.
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "pico/rpi_connect_identity.h"
+#include "pico/bootrom.h"
+
+#if PICO_NONSECURE
+
+bool rpi_connect_identity_key_available(void) {
+    return rom_secure_call(0, 0, 0, 0, SECURE_CALL_rpi_connect_identity_key_available) > 0;
+}
+
+int rpi_connect_identity_get_public_key(uint8_t out_pubkey[RPI_CONNECT_IDENTITY_PUBKEY_SIZE]) {
+    return rom_secure_call((uint32_t)out_pubkey, 0, 0, 0, SECURE_CALL_rpi_connect_identity_get_public_key);
+}
+
+int rpi_connect_identity_sign_exchange(rpi_connect_identity_exchange_t *exchange) {
+    return rom_secure_call((uint32_t)exchange, 0, 0, 0, SECURE_CALL_rpi_connect_identity_sign_exchange);
+}
+
+#else
+
+#include "mbedtls/ecdsa.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/platform_util.h"
+
+#if !PICO_RP2040
+#include "hardware/regs/addressmap.h"
+#endif
+
+#if __has_include("device_identity_keys.h")
+#include "device_identity_keys.h"
+#endif
+
+#define PRIVKEY_SIZE 32
+
+#if defined(RPI_CONNECT_DEVICE_IDENTITY_PRIVKEY_HEX)
+static int hex_to_bytes(const char *hex, uint8_t *out, size_t out_len) {
+    for (size_t i = 0; i < out_len * 2; i++) {
+        char c = hex[i];
+        uint8_t nibble;
+        if (c >= '0' && c <= '9') nibble = (uint8_t)(c - '0');
+        else if (c >= 'a' && c <= 'f') nibble = (uint8_t)(c - 'a' + 10);
+        else if (c >= 'A' && c <= 'F') nibble = (uint8_t)(c - 'A' + 10);
+        else return -1;
+        out[i / 2] = (uint8_t)((out[i / 2] << 4) | nibble);
+    }
+    return hex[out_len * 2] == '\0' ? 0 : -1;
+}
+#endif
+
+// Read the private key. A build-time debug key overrides the OTP key.
+// Returns 0 if a non-zero key was read; the caller must zeroize the key after use.
+static int read_private_key(uint8_t key[PRIVKEY_SIZE]) {
+    memset(key, 0, PRIVKEY_SIZE);
+#if defined(RPI_CONNECT_DEVICE_IDENTITY_PRIVKEY_HEX)
+    if (hex_to_bytes(RPI_CONNECT_DEVICE_IDENTITY_PRIVKEY_HEX, key, PRIVKEY_SIZE) != 0)
+        memset(key, 0, PRIVKEY_SIZE);
+#elif !PICO_RP2040
+    // 16 ECC rows of 2 bytes, read through the guarded (ECC corrected) alias
+    const volatile uint16_t *otp_data = (const volatile uint16_t *)OTP_DATA_GUARDED_BASE;
+    for (unsigned int i = 0; i < PRIVKEY_SIZE / 2; i++) {
+        uint16_t row = otp_data[RPI_CONNECT_IDENTITY_OTP_ROW + i];
+        key[i * 2] = (uint8_t)row;
+        key[i * 2 + 1] = (uint8_t)(row >> 8);
+    }
+#endif
+    uint8_t any = 0;
+    for (size_t i = 0; i < PRIVKEY_SIZE; i++)
+        any |= key[i];
+    return any ? 0 : -1;
+}
+
+bool rpi_connect_identity_key_available(void) {
+    uint8_t key[PRIVKEY_SIZE];
+    bool available = read_private_key(key) == 0;
+    mbedtls_platform_zeroize(key, sizeof(key));
+    return available;
+}
+
+// Load the private key into an ECP keypair, with an RNG for blinding and signing. The contexts are
+// over 1kB, so are allocated on the heap rather than the stack, which may be small (e.g. the Secure
+// stack in a TrustZone build, which these functions run on when called from Non-secure).
+typedef struct {
+    mbedtls_ecp_keypair keypair;
+    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_entropy_context entropy;
+} identity_key_ctx_t;
+
+static void identity_key_free(identity_key_ctx_t *ctx) {
+    if (!ctx)
+        return;
+    mbedtls_ecp_keypair_free(&ctx->keypair);
+    mbedtls_ctr_drbg_free(&ctx->ctr_drbg);
+    mbedtls_entropy_free(&ctx->entropy);
+    mbedtls_platform_zeroize(ctx, sizeof(*ctx));
+    free(ctx);
+}
+
+static identity_key_ctx_t *identity_key_load(void) {
+    identity_key_ctx_t *ctx = malloc(sizeof(*ctx));
+    if (!ctx)
+        return NULL;
+    mbedtls_ecp_keypair_init(&ctx->keypair);
+    mbedtls_ctr_drbg_init(&ctx->ctr_drbg);
+    mbedtls_entropy_init(&ctx->entropy);
+
+    int ret = mbedtls_ctr_drbg_seed(&ctx->ctr_drbg, mbedtls_entropy_func, &ctx->entropy, NULL, 0);
+    if (ret == 0) {
+        uint8_t key[PRIVKEY_SIZE];
+        ret = read_private_key(key);
+        if (ret == 0)
+            ret = mbedtls_ecp_read_key(MBEDTLS_ECP_DP_SECP256R1, &ctx->keypair, key, sizeof(key));
+        mbedtls_platform_zeroize(key, sizeof(key));
+    }
+    if (ret != 0) {
+        identity_key_free(ctx);
+        return NULL;
+    }
+    return ctx;
+}
+
+int rpi_connect_identity_get_public_key(uint8_t out_pubkey[RPI_CONNECT_IDENTITY_PUBKEY_SIZE]) {
+    identity_key_ctx_t *ctx = identity_key_load();
+    if (!ctx)
+        return -1;
+    int ret = mbedtls_ecp_keypair_calc_public(&ctx->keypair, mbedtls_ctr_drbg_random, &ctx->ctr_drbg);
+    if (ret == 0) {
+        size_t len = 0;
+        ret = mbedtls_ecp_write_public_key(&ctx->keypair, MBEDTLS_ECP_PF_UNCOMPRESSED,
+                                           &len, out_pubkey, RPI_CONNECT_IDENTITY_PUBKEY_SIZE);
+        if (ret == 0 && len != RPI_CONNECT_IDENTITY_PUBKEY_SIZE)
+            ret = -1;
+    }
+    identity_key_free(ctx);
+    return ret == 0 ? 0 : -1;
+}
+
+int rpi_connect_identity_sign_hash(const uint8_t hash[RPI_CONNECT_IDENTITY_HASH_SIZE],
+                                   uint8_t *out_sig, size_t *out_sig_len) {
+    if (!hash || !out_sig || !out_sig_len)
+        return -1;
+
+    identity_key_ctx_t *ctx = identity_key_load();
+    if (!ctx)
+        return -1;
+    // An mbedtls_ecdsa_context is an mbedtls_ecp_keypair, so the keypair can be used directly
+    size_t sig_len = 0;
+    int ret = mbedtls_ecdsa_write_signature(&ctx->keypair, MBEDTLS_MD_SHA256,
+                                            hash, RPI_CONNECT_IDENTITY_HASH_SIZE,
+                                            out_sig, *out_sig_len, &sig_len,
+                                            mbedtls_ctr_drbg_random, &ctx->ctr_drbg);
+    if (ret == 0)
+        *out_sig_len = sig_len;
+    identity_key_free(ctx);
+    return ret == 0 ? 0 : -1;
+}
+
+#if PICO_SECURE
+#include <stddef.h>
+#include "pico/secure.h"
+#include "pico/unique_id.h"
+#include "hardware/rcp.h"
+#include "rpi_connect_identity_internal.h"
+
+static bool ns_buffer_ok(const void *buf, uint32_t size, bool written) {
+    uint32_t valid = RCP_MASK_FALSE;
+    rom_validate_ns_buffer(buf, size, written ? RCP_MASK_TRUE : RCP_MASK_FALSE, &valid);
+    return rcp_is_true(valid);
+}
+
+bool __weak rpi_connect_identity_secure_allow_sign_exchange(__unused const rpi_connect_identity_exchange_t *exchange) {
+    return true;
+}
+
+static int secure_sign_exchange(rpi_connect_identity_exchange_t *ns_exchange) {
+    if (!ns_buffer_ok(ns_exchange, sizeof(*ns_exchange), true))
+        return BOOTROM_ERROR_INVALID_ADDRESS;
+
+    // Copy the inputs to Secure memory, so they can't change after they have been checked, and build
+    // the body there too, so it can't change between being hashed and returned
+    rpi_connect_identity_exchange_t *exchange = malloc(sizeof(*exchange));
+    if (!exchange)
+        return BOOTROM_ERROR_BUFFER_TOO_SMALL;
+    memcpy(exchange, ns_exchange, offsetof(rpi_connect_identity_exchange_t, body));
+
+    int ret = BOOTROM_ERROR_INVALID_ARG;
+    if (rpi_connect_identity_exchange_validate(exchange) == 0) {
+        // Only sign requests for this device
+        char serial_number[2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1];
+        pico_get_unique_board_id_string(serial_number, sizeof(serial_number));
+        if (strcmp(exchange->serial_number, serial_number) != 0 ||
+            !rpi_connect_identity_secure_allow_sign_exchange(exchange)) {
+            ret = BOOTROM_ERROR_NOT_PERMITTED;
+        } else {
+            ret = rpi_connect_identity_exchange_sign_validated(exchange);
+            if (ret == 0) {
+                memcpy(ns_exchange->body, exchange->body, sizeof(exchange->body));
+                memcpy(ns_exchange->sig, exchange->sig, sizeof(exchange->sig));
+                ns_exchange->sig_len = exchange->sig_len;
+            }
+        }
+    }
+    free(exchange);
+    return ret;
+}
+
+static int identity_secure_call_handler(uint32_t a, __unused uint32_t b, __unused uint32_t c, __unused uint32_t d, uint32_t fn) {
+    switch (fn) {
+        case SECURE_CALL_rpi_connect_identity_key_available:
+            return rpi_connect_identity_key_available() ? 1 : 0;
+        case SECURE_CALL_rpi_connect_identity_get_public_key: {
+            uint8_t *out_pubkey = (uint8_t *)a;
+            if (!ns_buffer_ok(out_pubkey, RPI_CONNECT_IDENTITY_PUBKEY_SIZE, true))
+                return BOOTROM_ERROR_INVALID_ADDRESS;
+            return rpi_connect_identity_get_public_key(out_pubkey);
+        }
+        case SECURE_CALL_rpi_connect_identity_sign_exchange:
+            return secure_sign_exchange((rpi_connect_identity_exchange_t *)a);
+        default:
+            return BOOTROM_ERROR_INVALID_ARG;
+    }
+}
+
+int rpi_connect_identity_secure_init(void) {
+    return rom_secure_call_add_callback(identity_secure_call_handler, SECURE_CALL_rpi_connect_identity_group,
+                                        SECURE_CALL_WELL_KNOWN_GROUP_MASK);
+}
+#endif // PICO_SECURE
+
+#endif // !PICO_NONSECURE
