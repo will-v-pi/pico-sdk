@@ -71,7 +71,7 @@
 #define PICO_CLKDIV_ROUND_NEAREST 1
 #endif
 
-// PICO_CONFIG: PICO_ADD_NONSECURE_FLASH_ERASE_HELPER, Add non-secure helper for flash erase operations with rom_flash_op, as the RP2350 A2 bootrom faults on all non-secure flash_op erase operations, type=bool, default=1 if PICO_RP2350_A2_SUPPORTED, group=pico_bootrom
+// PICO_CONFIG: PICO_ADD_NONSECURE_FLASH_ERASE_HELPER, Add non-secure helper for flash erase operations with rom_flash_op as the RP2350 A2 bootrom faults on all non-secure flash_op erase operations, type=bool, default=1 if PICO_RP2350_A2_SUPPORTED, group=pico_bootrom
 #ifndef PICO_ADD_NONSECURE_FLASH_ERASE_HELPER
 #define PICO_ADD_NONSECURE_FLASH_ERASE_HELPER PICO_RP2350_A2_SUPPORTED
 #endif
