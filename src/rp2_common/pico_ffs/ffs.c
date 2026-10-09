@@ -31,7 +31,7 @@
 #else // RP2350 may be using address mapping, we need to avoid remapped addresses
 #if PICO_NONSECURE
 #ifndef FFS_PARTITION_WINDOW
-#define FFS_PARTITION_WINDOW 3
+#define FFS_PARTITION_WINDOW -1
 #endif
 #define FL_OFFSET_TO_READ_ADDR(_o)      \
     ((void *)(XIP_BASE + (uint32_t)(_o)))
@@ -40,6 +40,33 @@
     ((void *)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + (uint32_t)(_o)))
 #endif
 #endif
+
+#ifndef PICO_RP2040
+// On RP2350 flash is programmed & erased via the bootrom, which takes addresses
+// rather than offsets. On Non-secure the ffs offsets are *runtime* offsets (the
+// partition is rolled into a QMI window), so the bootrom must translate them.
+// On Secure they are flash *storage* offsets (to match the untranslated reads).
+#define FL_OFFSET_TO_ROM_ADDR(_o)       (XIP_BASE + (uint32_t)(_o))
+#if PICO_NONSECURE
+#define FFS_CFLASH_SECLEVEL             CFLASH_SECLEVEL_VALUE_NONSECURE
+#define FFS_CFLASH_ASPACE               CFLASH_ASPACE_VALUE_RUNTIME
+#else
+#define FFS_CFLASH_SECLEVEL             CFLASH_SECLEVEL_VALUE_SECURE
+#define FFS_CFLASH_ASPACE               CFLASH_ASPACE_VALUE_STORAGE
+#endif
+
+static const cflash_flags_t cflash_erase = {
+    .flags = (CFLASH_OP_VALUE_ERASE << CFLASH_OP_LSB) |
+             (FFS_CFLASH_SECLEVEL << CFLASH_SECLEVEL_LSB) |
+             (FFS_CFLASH_ASPACE << CFLASH_ASPACE_LSB)
+};
+
+static const cflash_flags_t cflash_program = {
+    .flags = (CFLASH_OP_VALUE_PROGRAM << CFLASH_OP_LSB) |
+             (FFS_CFLASH_SECLEVEL << CFLASH_SECLEVEL_LSB) |
+             (FFS_CFLASH_ASPACE << CFLASH_ASPACE_LSB)
+};
+#endif // !PICO_RP2040
 
 // Convert an unaligned flash offset into its page start offset
 #define ALIGN_TO_START(_o, _a)          ((_o) & ~((_a)-1))
@@ -110,11 +137,14 @@ static int get_ffs_partition_info(void) {
     }
 
 #if PICO_NONSECURE
-    int ret = flash_roll_qmi_add_partition_at_window(picked_p, FFS_PARTITION_WINDOW);
-    hard_assert(ret == BOOTROM_OK);
+    int window = FFS_PARTITION_WINDOW;
+    int window_size = flash_roll_qmi_add_partition_at_window(picked_p, &window, false);
+    if (window_size < 0) {
+        return PICO_ERROR_NOT_FOUND;
+    }
 
-    ffs_data.start_offset = (4 * 1024 * 1024) * FFS_PARTITION_WINDOW;
-    ffs_data.end_offset = ffs_data.start_offset + (2 * FLASH_SECTOR_SIZE); // expected size is 8k
+    ffs_data.start_offset = (uint)window * (4 * 1024 * 1024);
+    ffs_data.end_offset = ffs_data.start_offset + window_size;
 #else
     int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_SINGLE_LOCATION_AND_FLAGS | (picked_p << 24));
     if (3 != ret || PT_SINGLE_LOCATION_AND_FLAGS != buffer[0]) {
@@ -156,6 +186,7 @@ static uint32_t calc_next_chunk_start(uint32_t offset) {
 }
 
 
+#ifdef PICO_RP2040
 static void call_flash_range_erase(void *param) {
 
     uint32_t offset = ((uintptr_t*)param)[0];
@@ -190,6 +221,25 @@ static int flash_program_a_page(uint32_t offset, const void *page) {
 
     return ret;
 }
+#else
+// Note: rom_flash_op() uses flash_safe_execute() internally
+static int flash_erase_chunk_sectors(uint32_t offset) {
+
+    return rom_flash_op(cflash_erase,
+                        FL_OFFSET_TO_ROM_ADDR(offset),
+                        ffs_data.chunk_size,
+                        NULL);
+}
+
+
+static int flash_program_a_page(uint32_t offset, const void *page) {
+
+    return rom_flash_op(cflash_program,
+                        FL_OFFSET_TO_ROM_ADDR(offset),
+                        FLASH_PAGE_SIZE,
+                        (uint8_t *)(uintptr_t)page);
+}
+#endif
 
 
 static inline void flash_read_into_cache(uint32_t offset) {

@@ -328,12 +328,16 @@ void flash_program_invalid_block_to_b_partition(uint pi_a);
  * This can be useful to give NonSecure code access to a partition,
  * while keeping the untranslated XIP window inaccessible.
  * 
- * \param partition_num the partition number
- * \param window the window to use
+ * \param partition_num the partition number, or -1 to clear the window instead
+ * \param window pointer to the window number to use, or a negative value to pick a window
+ *               and write that number back. The window picked will be at least
+ *               (-1 - *window), so -1 allows any window, -2 allows window 1 upwards, etc.
+ *               Windows already rolled to this partition are re-used if there are any,
+ *               otherwise the first cleared window is used.
  * \param clear_after whether to clear all windows after the used one
  * \return size of partition on success, otherwise a negative error code
  */
-int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window, bool clear_after);
+int flash_roll_qmi_add_partition_at_window(int partition_num, int* window, bool clear_after);
 
 /*!
  * \brief Roll QMI to a partition
@@ -348,7 +352,8 @@ int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window, bool
  * \return size of partition on success, otherwise a negative error code
  */
 static inline int flash_roll_qmi_to_partition(uint partition_num) {
-    return flash_roll_qmi_add_partition_at_window(partition_num, 0, true);
+    int window = 0;
+    return flash_roll_qmi_add_partition_at_window(partition_num, &window, true);
 }
 
 #endif // !PICO_RP2040 || PICO_COMBINED_DOCS

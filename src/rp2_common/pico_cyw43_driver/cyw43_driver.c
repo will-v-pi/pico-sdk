@@ -32,9 +32,22 @@ static async_context_t *cyw43_async_context = NULL;
     uintptr_t fw_data;
 #if PICO_NONSECURE
     #ifndef CYW43_FIRMWARE_PARTITION_WINDOW
-    #define CYW43_FIRMWARE_PARTITION_WINDOW 2
+    #define CYW43_FIRMWARE_PARTITION_WINDOW -1
     #endif
+    // QMI window rolled to the firmware partition, or -1 if none
+    static int cyw43_firmware_window = -1;
 #endif
+#endif
+
+#if CYW43_USE_FIRMWARE_PARTITION && PICO_NONSECURE
+// The firmware is only read from flash while loading it, so the window can be cleared afterwards
+static void cyw43_release_firmware_window(void) {
+    if (cyw43_firmware_window >= 0) {
+        int ret = flash_roll_qmi_add_partition_at_window(-1, &cyw43_firmware_window, false);
+        hard_assert(ret >= 0);
+        cyw43_firmware_window = -1;
+    }
+}
 #endif
 
 static void cyw43_sleep_timeout_reached(async_context_t *context, async_at_time_worker_t *worker);
@@ -93,6 +106,12 @@ void cyw43_post_poll_hook(void) {
 
 void cyw43_schedule_internal_poll_dispatch(__unused void (*func)(void)) {
     assert(func == cyw43_poll);
+#if CYW43_USE_FIRMWARE_PARTITION && PICO_NONSECURE
+    // This is first called at the end of cyw43_ensure_up, once the firmware & CLM have been
+    // successfully loaded, so the firmware partition no longer needs to be mapped.
+    // Note, if cyw43_driver_deinit is called, cyw43_driver_init will map it again.
+    cyw43_release_firmware_window();
+#endif
     async_context_set_work_pending(cyw43_async_context, &cyw43_poll_worker);
 }
 
@@ -189,13 +208,14 @@ bool cyw43_driver_init(async_context_t *context) {
             CYW43_DEBUG("Chosen CYW43 firmware in partition %d\n", picked_p);
         
         #if PICO_NONSECURE
-            int ret = flash_roll_qmi_add_partition_at_window(picked_p, CYW43_FIRMWARE_PARTITION_WINDOW, false);
-            hard_assert(ret == BOOTROM_OK);
+            int window = CYW43_FIRMWARE_PARTITION_WINDOW;
+            int window_size = flash_roll_qmi_add_partition_at_window(picked_p, &window, false);
+            hard_assert(window_size >= 0);
+            cyw43_firmware_window = window;
 
-            uint32_t saddr = (4 * 1024 * 1024) * CYW43_FIRMWARE_PARTITION_WINDOW;
+            uint32_t saddr = (uint)window * (4 * 1024 * 1024);
             uint32_t eaddr = saddr + (256 * 1024); // max size expected is 256k
             uint32_t read_base = XIP_BASE;
-            printf("Rolling %08x %08x %08x\n", saddr, eaddr, read_base);
         #else
             int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (picked_p << 24));
             hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION));
@@ -205,7 +225,6 @@ bool cyw43_driver_init(async_context_t *context) {
             uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu) * FLASH_SECTOR_SIZE;
             uint32_t eaddr = (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1) * FLASH_SECTOR_SIZE;
             uint32_t read_base = XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE;
-            printf("Not Rolling %08x %08x %08x\n", saddr, eaddr, read_base);
         #endif
 
             // Starts with metadata block
@@ -245,6 +264,10 @@ void cyw43_driver_deinit(async_context_t *context) {
         async_context_execute_sync(context, cyw43_irq_deinit, NULL);
         cyw43_deinit(&cyw43_state);
         cyw43_async_context = NULL;
+#if CYW43_USE_FIRMWARE_PARTITION && PICO_NONSECURE
+        // In case the firmware was never loaded
+        cyw43_release_firmware_window();
+#endif
     }
 }
 

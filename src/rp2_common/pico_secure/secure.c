@@ -569,8 +569,19 @@ int rom_default_secure_call_callback(uint32_t a, uint32_t b, uint32_t c, uint32_
     #endif
     #if PICO_ALLOW_NONSECURE_ROLL_PARTITION
         case SECURE_CALL_flash_roll_qmi_add_partition_at_window: {
-            if (b < PICO_ALLOW_NONSECURE_QMI_WINDOW_MIN) return BOOTROM_ERROR_NOT_PERMITTED;
-            return flash_roll_qmi_add_partition_at_window(a, b, c);
+            uint32_t valid = RCP_MASK_FALSE;
+            rom_validate_ns_buffer((int*)b, sizeof(uint32_t), RCP_MASK_TRUE, &valid);
+            if (!rcp_is_true(valid)) return BOOTROM_ERROR_INVALID_ADDRESS;
+            int b_val = *(int*)b;
+            if (b_val >= 0) {
+                if (b_val < PICO_ALLOW_NONSECURE_QMI_WINDOW_MIN) return BOOTROM_ERROR_NOT_PERMITTED;
+            } else {
+                // Enforce the minimum window when picking one
+                b_val = MIN(b_val, -1 - PICO_ALLOW_NONSECURE_QMI_WINDOW_MIN);
+            }
+            int ret = flash_roll_qmi_add_partition_at_window((int)a, &b_val, c);
+            *(int*)b = b_val;
+            return ret;
         }
     #endif
     #if PICO_ALLOW_NONSECURE_BUY

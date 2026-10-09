@@ -485,34 +485,93 @@ void flash_program_invalid_block_to_b_partition(uint pi_a) {
 
 #if PICO_NONSECURE
 #if PICO_ALLOW_NONSECURE_ROLL_PARTITION
-int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window, bool clear_after) {
-    return rom_secure_call(partition_num, window, clear_after, 0, SECURE_CALL_flash_roll_qmi_add_partition_at_window);
+int flash_roll_qmi_add_partition_at_window(int partition_num, int* window, bool clear_after) {
+    return rom_secure_call(partition_num, (uint32_t)window, clear_after, 0, SECURE_CALL_flash_roll_qmi_add_partition_at_window);
 }
 #else
-int flash_roll_qmi_add_partition_at_window(uint partition_num, uint window, bool clear_after) {
+int flash_roll_qmi_add_partition_at_window(int partition_num, int* window, bool clear_after) {
     panic_unsupported();
 }
 #endif
 #else
-int flash_roll_qmi_add_partition_at_window(uint partition_num, int window, bool clear_after) {
-    uint32_t buffer[2 + 1] = {}; // 2 words for the partition location and flags, plus 1
-    int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (partition_num << 24));
-    if (ret < 0) return ret;
+static inline uint32_t qmi_atrans_value(uint32_t size, uint32_t roll) {
+    return (uint32_t)((size << QMI_ATRANS0_SIZE_LSB) | (roll << QMI_ATRANS0_BASE_LSB));
+}
 
-    uint32_t location_and_permissions = buffer[1];
-    uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu);
-    uint32_t eaddr = (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1);
-
-    uint32_t roll = saddr;
-    uint32_t size = (eaddr - saddr);
-    for (uint i = (uint)window; i < 4; i++) {
+// Check whether the windows starting at first_window are already rolled to exactly this region
+static bool qmi_windows_match(uint first_window, uint32_t roll, uint32_t size) {
+    for (uint i = first_window; i < 4; i++) {
         uint32_t this_size = MIN(size, QMI_ATRANS0_SIZE_RESET);
-        qmi_hw->atrans[i] = (uint32_t)((this_size << QMI_ATRANS0_SIZE_LSB) | (roll << QMI_ATRANS0_BASE_LSB));
+        uint32_t atrans = qmi_hw->atrans[i] & (QMI_ATRANS0_SIZE_BITS | QMI_ATRANS0_BASE_BITS);
+        if (atrans != qmi_atrans_value(this_size, roll)) return false;
+        size -= this_size;
+        roll += this_size;
+        if (size == 0) return true;
+    }
+    return false;
+}
+
+int flash_roll_qmi_add_partition_at_window(int partition_num, int* window, bool clear_after) {
+
+    // Default is to clear the window, if partition_num < 0
+    uint32_t roll = 0;
+    uint32_t size = 0;
+
+    if (partition_num >= 0) {
+        uint32_t buffer[2 + 1] = {}; // 2 words for the partition location and flags, plus 1
+        int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (partition_num << 24));
+        if (ret < 0) return ret;
+
+        uint32_t location_and_permissions = buffer[1];
+        uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu);
+        uint32_t eaddr = (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1);
+
+        roll = saddr;
+        size = (eaddr - saddr);
+    }
+
+    if (*window < 0) {
+        // Negative window means pick one, from a minimum of -1 - window
+        if (*window < -4) return PICO_ERROR_INVALID_ARG;
+        uint min_window = (uint)(-1 - *window);
+        *window = -1;
+
+        // Re-use windows already rolled to this partition (e.g. if called twice)
+        if (size != 0) {
+            for (uint i = min_window; i < 4; i++) {
+                if (qmi_windows_match(i, roll, size)) {
+                    *window = (int)i;
+                    break;
+                }
+            }
+        }
+        // Otherwise find first cleared window
+        if (*window == -1) {
+            for (uint i = min_window; i < 4; i++) {
+                if ((qmi_hw->atrans[i] & QMI_ATRANS0_SIZE_BITS) == 0) {
+                    *window = (int)i;
+                    break;
+                }
+            }
+        }
+        if (*window == -1) return PICO_ERROR_INSUFFICIENT_RESOURCES;
+    }
+
+    if (*window > 3) return PICO_ERROR_INVALID_ARG;
+
+    uint window_val = (uint)*window;
+    
+    int return_size = size * FLASH_SECTOR_SIZE;
+
+    for (uint i = window_val; i < 4; i++) {
+        uint32_t this_size = MIN(size, QMI_ATRANS0_SIZE_RESET);
+        qmi_hw->atrans[i] = qmi_atrans_value(this_size, roll);
         size -= this_size;
         roll += this_size;
         if (size <= 0 && !clear_after) break;
     }
-    return eaddr - saddr;
+
+    return return_size;
 }
 #endif
 
