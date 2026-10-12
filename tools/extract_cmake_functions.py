@@ -75,7 +75,7 @@ group_names_descriptions = {
     'pico_pio': ('Pico PIO', 'CMake functions to generate PIO headers'),
     'pico_low_power': ('Pico Low Power', 'CMake functions to configure the low power library'),
     'pico_rpi_connect_ota': ('Pico RPi Connect OTA', 'CMake functions to configure RPi Connect OTA support'),
-    'pico_secure': ('Pico Secure', 'CMake functions to configure secure and non-secure binaries'),
+    'pico_trustzone': ('Pico TrustZone', 'CMake functions to configure secure and non-secure binaries'),
     'other': ('Other', 'Other CMake functions'),
 }
 

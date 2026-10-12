@@ -10,7 +10,7 @@
 #include "pico/bootrom.h"
 #include "hardware/flash.h"
 #include "hardware/watchdog.h"
-#include "pico/secure.h"
+#include "pico/trustzone.h"
 #include "pico/test.h"
 
 #include "secure_call_user_callbacks.h"

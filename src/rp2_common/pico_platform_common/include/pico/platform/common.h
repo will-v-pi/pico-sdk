@@ -43,7 +43,7 @@
 
 #ifndef __ASSEMBLER__
 
-// PICO_SECURE/PICO_NONSECURE configs - placed here as needed in header files that don't include pico/secure.h
+// PICO_SECURE/PICO_NONSECURE configs - placed here as needed in header files that don't include pico/trustzone.h
 
 // PICO_CONFIG: PICO_ALLOW_NONSECURE_STDIO, Allow non-secure to use stdio, type=bool, default=0, group=pico_bootrom
 #ifndef PICO_ALLOW_NONSECURE_STDIO

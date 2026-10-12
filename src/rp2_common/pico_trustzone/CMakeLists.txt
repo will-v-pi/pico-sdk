@@ -1,11 +1,11 @@
-if (NOT TARGET pico_secure)
-    pico_add_library(pico_secure)
-    target_include_directories(pico_secure_headers SYSTEM INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
+if (NOT TARGET pico_trustzone)
+    pico_add_library(pico_trustzone)
+    target_include_directories(pico_trustzone_headers SYSTEM INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
 
-    target_sources(pico_secure INTERFACE
-            ${CMAKE_CURRENT_LIST_DIR}/secure.c)
+    target_sources(pico_trustzone INTERFACE
+            ${CMAKE_CURRENT_LIST_DIR}/trustzone.c)
 
-    pico_mirrored_target_link_libraries(pico_secure INTERFACE
+    pico_mirrored_target_link_libraries(pico_trustzone INTERFACE
             hardware_exception
             hardware_flash
             pico_rand

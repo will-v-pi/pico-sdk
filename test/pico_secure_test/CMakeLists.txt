@@ -1,5 +1,5 @@
-if (NOT TARGET pico_secure)
-    message("Skipping pico_secure_test as pico_secure is unavailable on this platform")
+if (NOT TARGET pico_trustzone)
+    message("Skipping pico_secure_test as pico_trustzone is unavailable on this platform")
     return()
 endif()
 
@@ -14,7 +14,7 @@ add_executable(pico_secure_test_s pico_secure_test_s.c)
 target_link_libraries(pico_secure_test_s
         pico_stdlib
         hardware_watchdog
-        pico_secure
+        pico_trustzone
         pico_test
         hardware_flash
 )
@@ -31,7 +31,7 @@ pico_add_extra_outputs(pico_secure_test_s)
 add_executable(pico_secure_test_ns pico_secure_test_ns.c)
 target_link_libraries(pico_secure_test_ns
         pico_stdlib
-        pico_secure
+        pico_trustzone
         pico_test
         hardware_flash
         hardware_pio

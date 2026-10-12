@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef _PICO_SECURE_H
-#define _PICO_SECURE_H
+#ifndef _PICO_TRUSTZONE_H
+#define _PICO_TRUSTZONE_H
 
 #include "pico.h"
 #include "pico/bootrom.h"
@@ -32,7 +32,7 @@ extern "C" {
 
 #if PICO_SECURE || PICO_COMBINED_DOCS
 /*! \brief  Launch non-secure binary
- *  \ingroup pico_secure
+ *  \ingroup pico_trustzone
  *
  * \note The secure binary must have already set it's stack limits, using PICO_USE_STACK_GUARDS or similar
  *
@@ -42,7 +42,7 @@ extern "C" {
 void secure_launch_nonsecure_binary(uint32_t vtor_address, uint32_t stack_limit);
 
 /*! \brief  Configure SAU region
- *  \ingroup pico_secure
+ *  \ingroup pico_trustzone
  *
  * \param region The region to configure
  * \param base The base address of the region
@@ -54,7 +54,7 @@ void secure_sau_configure_region(uint region, uint32_t base, uint32_t limit, boo
 
 #if defined(PICO_SECURITY_SPLIT_CONFIGURED)
 /*! \brief  Configure default SAU regions
- *  \ingroup pico_secure
+ *  \ingroup pico_trustzone
  *
  * Configures the default security split configuration, based on the split configured with pico_set_security_ram_split
  */
@@ -62,7 +62,7 @@ void secure_sau_configure_split(void);
 
 
 /*! \brief  Launch non-secure binary from default location
- *  \ingroup pico_secure
+ *  \ingroup pico_trustzone
  *
  * Launches non-secure binary from the default location, based on the split configured with pico_set_security_ram_split
  */
@@ -70,7 +70,7 @@ void secure_launch_nonsecure_binary_default(void);
 #endif
 
 /*! \brief  Set SAU enabled
- *  \ingroup pico_secure
+ *  \ingroup pico_trustzone
  *
  * Set SAU enabled, with appropriate memory barriers
  *
@@ -80,7 +80,7 @@ void secure_sau_set_enabled(bool enabled);
 
 #if PICO_ADD_NONSECURE_FLASH_ERASE_HELPER || PICO_COMBINED_DOCS
 /*! \brief  Set non-secure flash erase helper enabled
- *  \ingroup pico_secure
+ *  \ingroup pico_trustzone
  *
  * The RP2350 A2 bootrom faults on all non-secure flash_op erase operations, so when this helper is
  * enabled, non-secure rom_flash_op() erase operations are performed by secure instead. They are still
@@ -98,7 +98,7 @@ void secure_set_nonsecure_flash_erase_helper_enabled(bool enabled);
 typedef void (*secure_hardfault_callback_t)(void);
 
 /*! \brief  Install default hardfault handler
- *  \ingroup pico_secure
+ *  \ingroup pico_trustzone
  *
  * \param callback The callback to call when a hardfault occurs after printing the information
  */
@@ -207,7 +207,7 @@ int pio_request_unused_pio_from_secure(void);
 
 #if (PICO_ALLOW_NONSECURE_BUY && PICO_SECURE) || PICO_COMBINED_DOCS
 /*! \brief  Decide whether to allow a non-secure request to buy the current image
- *  \ingroup pico_secure
+ *  \ingroup pico_trustzone
  *
  * Called by secure when non-secure calls rom_explicit_buy(), before the image is bought. The default
  * implementation always allows the buy, but this weak function can be overridden to add additional

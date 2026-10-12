@@ -4,9 +4,9 @@ load("//bazel:defs.bzl", "compatible_with_rp2", "incompatible_with_config")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "pico_secure",
-    srcs = ["secure.c"],
-    hdrs = ["include/pico/secure.h"],
+    name = "pico_trustzone",
+    srcs = ["trustzone.c"],
+    hdrs = ["include/pico/trustzone.h"],
     includes = ["include"],
     target_compatible_with = compatible_with_rp2() + incompatible_with_config("//bazel/constraint:rp2040"),
     deps = [

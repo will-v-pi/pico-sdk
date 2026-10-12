@@ -5,7 +5,7 @@
  */
 
 #include <stdio.h>
-#include "pico/secure.h"
+#include "pico/trustzone.h"
 #include "pico/runtime_init.h"
 
 #include "hardware/timer.h"

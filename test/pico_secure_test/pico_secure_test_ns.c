@@ -10,7 +10,7 @@
 #include "pico/stdlib.h"
 #include "pico/test.h"
 #include "pico/rand.h"
-#include "pico/secure.h"
+#include "pico/trustzone.h"
 #include "pico/stdio_usb.h"
 
 #include "secure_call_user_callbacks.h"

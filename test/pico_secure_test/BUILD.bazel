@@ -22,8 +22,8 @@ cc_binary(
         ":addition_pio",
         "//src/rp2_common/hardware_flash",
         "//src/rp2_common/hardware_watchdog",
-        "//src/rp2_common/pico_secure",
         "//src/rp2_common/pico_stdlib",
+        "//src/rp2_common/pico_trustzone",
         "//test/pico_test",
     ],
 )
@@ -39,9 +39,9 @@ cc_binary(
     deps = [
         ":addition_pio",
         "//src/rp2_common/hardware_flash",
-        "//src/rp2_common/pico_secure",
         "//src/rp2_common/pico_stdio_usb",
         "//src/rp2_common/pico_stdlib",
+        "//src/rp2_common/pico_trustzone",
         "//test/pico_test",
     ],
 )
@@ -137,10 +137,10 @@ pico_set_stdio_enabled(
     testonly = True,
     src = ":pico_secure_test_ns_optioned",
     tags = ["manual"],
-    usb = True,
     # tinyusb family.c cannot deal with LIB_PICO_STDIO_UART=0, as it just checks if it's defined,
     # so need to leave uart driver available but unused
     uart = True,
+    usb = True,
 )
 
 pico_set_linker_script(

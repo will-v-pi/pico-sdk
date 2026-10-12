@@ -28,6 +28,15 @@ cc_library(
     ],
 )
 
+# Minimal mbedtls_config.h for when pico_rpi_connect_identity_key is used without the rest of
+# pico_rpi_connect (which needs a TLS configuration), e.g. in a TrustZone Secure binary.
+# Point --@pico-sdk//bazel/config:PICO_MBEDTLS_CONFIG at this target to use it.
+cc_library(
+    name = "pico_rpi_connect_identity_key_default_config_headers",
+    hdrs = ["identity_key_config_headers/mbedtls_config.h"],
+    includes = ["identity_key_config_headers"],
+)
+
 cc_library(
     name = "pico_rpi_connect",
     srcs = [
@@ -66,13 +75,13 @@ cc_library(
     # cyw43_arch_async_context()), so this library does not depend on any
     # particular pico_cyw43_arch flavour.
     deps = [
+        ":pico_rpi_connect_identity_key",
         "//src/common/pico_cjson",
         "//src/rp2_common/pico_async_context",
         "//src/rp2_common/pico_lwip",
         "//src/rp2_common/pico_lwip:pico_lwip_http",
         "//src/rp2_common/pico_mbedtls",
         "//src/rp2_common/pico_stdlib",
-        ":pico_rpi_connect_identity_key",
     ],
 )
 
