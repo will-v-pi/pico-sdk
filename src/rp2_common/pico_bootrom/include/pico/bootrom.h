@@ -1226,7 +1226,9 @@ static inline int rom_get_last_boot_type(void) {
  *
  * Note that a partition is added to the runtime view of the partition table maintained by the bootrom if there is space to do so
  *
- * Note that these permissions cannot override the permissions for any pre-existing partitions, as permission matches are made on a first partition found basis.
+ * Note that these permissions cannot override the permissions for any pre-existing partitions, as permission matches are made on
+ * a first partition found basis - see \ref rom_add_flash_partition_permissions and \ref rom_remove_flash_partition_permissions to
+ * modify permissions on pre-existing partitions.
  *
  * @param start_offset the start_offset into flash in bytes (must be a multiple of 4K)
  * @param size the size in byte (must be a multiple of 4K)
@@ -1236,6 +1238,41 @@ static inline int rom_get_last_boot_type(void) {
  *         PICO_ERROR_INVALID_ARG if the start_offset or size are out of range, or invalid permission bits are set.
  */
 int rom_add_flash_runtime_partition(uint32_t start_offset, uint32_t size, uint32_t permissions);
+
+/*! \brief  Add permissions to a partition in the runtime view of the partition table
+ * \ingroup pico_bootrom
+ *
+ * Adds permissions to a partition (or a runtime partition added with \ref rom_add_flash_runtime_partition) in
+ * the runtime view of the partition table maintained by the bootrom, which is used to check the permissions of
+ * flash operations. This lasts until the partition table is reloaded (e.g. on reboot). See also
+ * \ref rom_remove_flash_partition_permissions.
+ *
+ * Note this grants permissions beyond those in the partition table, e.g. \ref PICOBIN_PARTITION_PERMISSION_NS_W_BITS
+ * lets Non-secure code write to the partition, so should be used with care.
+ *
+ * @param partition_num the partition number
+ * @param permissions the bitwise OR of permissions to add, from PICOBIN_PARTITION_PERMISSION_ constants, e.g.
+ *        \ref PICOBIN_PARTITION_PERMISSION_NS_W_BITS from boot/picobin.h
+ * @return PICO_OK on success, or PICO_ERROR_INVALID_ARG if the partition number is out of range, or invalid
+ *         permission bits are set.
+ */
+int rom_add_flash_partition_permissions(uint partition_num, uint32_t permissions);
+
+/*! \brief  Remove permissions from a partition in the runtime view of the partition table
+ * \ingroup pico_bootrom
+ *
+ * Removes permissions from a partition (or a runtime partition added with \ref rom_add_flash_runtime_partition) in
+ * the runtime view of the partition table maintained by the bootrom, which is used to check the permissions of
+ * flash operations. This lasts until the partition table is reloaded (e.g. on reboot). See also
+ * \ref rom_add_flash_partition_permissions.
+ *
+ * @param partition_num the partition number
+ * @param permissions the bitwise OR of permissions to remove, from PICOBIN_PARTITION_PERMISSION_ constants, e.g.
+ *        \ref PICOBIN_PARTITION_PERMISSION_NS_W_BITS from boot/picobin.h
+ * @return PICO_OK on success, or PICO_ERROR_INVALID_ARG if the partition number is out of range, or invalid
+ *         permission bits are set.
+ */
+int rom_remove_flash_partition_permissions(uint partition_num, uint32_t permissions);
 
 #endif
 

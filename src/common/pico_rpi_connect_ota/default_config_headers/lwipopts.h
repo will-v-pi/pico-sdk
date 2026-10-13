@@ -8,7 +8,9 @@
 #define MEM_SIZE                    8000
 #define MEMP_NUM_TCP_SEG            32
 #define MEMP_NUM_ARP_QUEUE          10
+#ifndef PBUF_POOL_SIZE
 #define PBUF_POOL_SIZE              28
+#endif
 #define LWIP_ARP                    1
 #define LWIP_ETHERNET               1
 #define LWIP_ICMP                   1

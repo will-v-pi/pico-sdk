@@ -57,6 +57,11 @@ endif()
 # For the trustzone configuration, the update UF2 is the NonSecure UF2 followed
 # by the TBYB Secure UF2, concatenated together - the NonSecure partitions have
 # no_reboot_on_uf2_download set, so both are written before rebooting.
+# For the default and no_wifi_firmware configurations, if SECURE_TARGET is specified
+# then it is put in the main partitions instead of TARGET, and the update UF2 is the
+# TBYB SECURE_TARGET UF2. This is for when TARGET is a no_flash NonSecure binary
+# embedded in the SECURE_TARGET binary (see pico_embed_nonsecure_binary) - TARGET
+# is still the target which uses the WiFi firmware partition.
 # The UF2 filename will include the major, minor, and rollback versions,
 # and by default also includes the date and PICO_BOARD - these can be
 # disabled using NO_DATE and NO_BOARD
@@ -70,7 +75,7 @@ endif()
 # - trustzone - Secure A/B partitions, NonSecure A/B partitions, WiFi firmware A/B partitions, and FFS partition
 #
 # \param\ TARGET The target to add outputs for
-# \param\ CONFIGURATION Pick the configuration to use - options are: default, no_wifi_firmware
+# \param\ CONFIGURATION Pick the configuration to use - options are: default, no_wifi_firmware, trustzone
 # \param\ WIFI_SSID Wifi SSID to put in FFS - if not specified will be left blank
 # \param\ WIFI_PASSWORD Wifi password to put in FFS - if not specified will be left blank
 # \param\ CONNECT_TOKEN Raspberry Pi Connect token to put in FFS - if not specified will not be included in FFS
@@ -79,8 +84,8 @@ endif()
 # \param\ NO_DATE Don't include the current date in the update filename
 # \param\ UPDATE_DIR Directory to place the update UF2 in - defaults to ${CMAKE_CURRENT_LIST_DIR}/updates
 # \param\ PARTITION_TABLE Specify custom path to partition table to use - must match the partition layout expected by the configuration
-# \param\ SECURE_TARGET Target to put in the secure partitions
-# \param\ SECURE_SIZE Size to make the secure partitions
+# \param\ SECURE_TARGET Target to put in the secure partitions (trustzone), or main partitions instead of TARGET (default and no_wifi_firmware)
+# \param\ SECURE_SIZE Size to make the secure partitions (trustzone only)
 function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
     set(options NO_DATE NO_BOARD)
     set(oneValueArgs WIFI_SSID WIFI_PASSWORD CONNECT_TOKEN COMBINED_TARGET UPDATE_DIR PARTITION_TABLE SECURE_TARGET SECURE_SIZE)
@@ -88,6 +93,13 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
 
     if (NOT OPT_COMBINED_TARGET)
         set(OPT_COMBINED_TARGET ${TARGET}_combined)
+    endif()
+
+    # The target to put in the main partitions, and for the update UF2
+    if (OPT_SECURE_TARGET AND NOT CONFIGURATION STREQUAL "trustzone")
+        set(MAIN_TARGET ${OPT_SECURE_TARGET})
+    else()
+        set(MAIN_TARGET ${TARGET})
     endif()
 
     if (NOT OPT_UPDATE_DIR)
@@ -152,13 +164,13 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
 
     if (CONFIGURATION STREQUAL "default")
         pico_combine_uf2_outputs(${OPT_COMBINED_TARGET} ${TARGET}_pt
-            ${TARGET} ${TARGET}_erase
+            ${MAIN_TARGET} ${TARGET}_erase
             ${TARGET}_wifi_firmware ${TARGET}_erase
             ${TARGET}_ffs_blob
             PARTITIONS 0 1 2 3 4)
     elseif (CONFIGURATION STREQUAL "no_wifi_firmware")
         pico_combine_uf2_outputs(${OPT_COMBINED_TARGET} ${TARGET}_pt
-            ${TARGET} ${TARGET}_erase
+            ${MAIN_TARGET} ${TARGET}_erase
             ${TARGET}_ffs_blob
             PARTITIONS 0 1 2)
     elseif (CONFIGURATION STREQUAL "trustzone")
@@ -174,15 +186,15 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
 
     set(update_suffix "")
 
-    get_target_property(rollback ${TARGET} PICOTOOL_ROLLBACK_VERSION)
+    get_target_property(rollback ${MAIN_TARGET} PICOTOOL_ROLLBACK_VERSION)
     if (rollback) # 0 rollback version isn't supported
         set(update_suffix "${update_suffix}-r${rollback}")
     endif()
-    get_target_property(major ${TARGET} PICOTOOL_MAJOR_VERSION)
+    get_target_property(major ${MAIN_TARGET} PICOTOOL_MAJOR_VERSION)
     if (NOT major)
         set(major 0)
     endif()
-    get_target_property(minor ${TARGET} PICOTOOL_MINOR_VERSION)
+    get_target_property(minor ${MAIN_TARGET} PICOTOOL_MINOR_VERSION)
     if (NOT minor)
         set(minor 0)
     endif()
@@ -204,7 +216,7 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
         pico_concatenate_uf2_outputs(${TARGET}_update ${TARGET} ${TARGET}_secure_tbyb
             OUTFILE ${OPT_UPDATE_DIR}/${TARGET}${update_suffix}.uf2)
     else()
-        pico_add_tbyb_uf2(${TARGET} OUTTARGET ${TARGET}_update OUTFILE ${OPT_UPDATE_DIR}/${TARGET}${update_suffix}.uf2)
+        pico_add_tbyb_uf2(${MAIN_TARGET} OUTTARGET ${TARGET}_update OUTFILE ${OPT_UPDATE_DIR}/${TARGET}${update_suffix}.uf2)
     endif()
     pico_add_uf2_sha256sum(${TARGET}_update)
     add_dependencies(${OPT_COMBINED_TARGET} ${TARGET}_update ${TARGET}_update_sha256sum)

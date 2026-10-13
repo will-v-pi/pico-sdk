@@ -91,7 +91,8 @@ if (NOT TARGET pico_trustzone)
     # - SECURE_SCRATCH <SECURE_LENGTH> <NONSECURE_SCRATCH_LENGTH>: Secure using start of main SRAM plus all of scratch, NonSecure using end of main SRAM
     #
     # Additional options are:
-    # - NO_FLASH: Assumes NS VTOR is at start of it's SRAM region, rather than at the start of flash
+    # - NO_FLASH: Assumes NS VTOR is at start of it's SRAM region, rather than at the start of flash. The
+    #   NonSecure binary can then be a no_flash binary, embedded in the Secure binary with pico_embed_nonsecure_binary()
     #
     # \param\ SECURE_TARGET The secure target
     # \param\ NONSECURE_TARGET The non-secure target
@@ -163,9 +164,63 @@ if (NOT TARGET pico_trustzone)
 
         if (OPTS_NO_FLASH)
             target_compile_definitions(${SECURE_TARGET} PRIVATE PICO_SECURITY_SPLIT_NO_FLASH=1)
+            # Start of the NonSecure SRAM region, where pico_embed_nonsecure_binary() places the NonSecure binary
+            pico_set_linker_script_var(${SECURE_TARGET} NONSECURE_RAM_ORIGIN "RAM_ORIGIN_DEFAULT+${SECURE_LENGTH}")
         else()
             target_compile_definitions(${SECURE_TARGET} PRIVATE PICO_SECURITY_SPLIT_NO_FLASH=0)
         endif()
 
+    endfunction()
+
+    # pico_embed_nonsecure_binary(SECURE_TARGET NONSECURE_TARGET)
+    # \brief_nodesc\ Embed a no_flash NonSecure binary in a Secure binary
+    #
+    # Embeds the NonSecure binary in the Secure binary, at the start of the NonSecure SRAM region,
+    # rather than running the NonSecure binary from flash. The NonSecure binary is then loaded along with the
+    # Secure binary (e.g. by the bootrom, for a packaged Secure binary), is covered by any signature or hash of
+    # the Secure binary, and can be launched with secure_launch_nonsecure_binary_default().
+    #
+    # The NonSecure binary must be a no_flash binary, and pico_set_security_ram_split() must be called with the
+    # NO_FLASH option.
+    #
+    # The NonSecure binary isn't booted by the bootrom, or visible to picotool, so this removes its binary info and
+    # metadata block, as all of that should be set on the Secure binary instead.
+    #
+    # \param\ SECURE_TARGET The secure target
+    # \param\ NONSECURE_TARGET The non-secure target, which must be a no_flash binary
+    function(pico_embed_nonsecure_binary SECURE_TARGET NONSECURE_TARGET)
+        set(NONSECURE_BIN ${CMAKE_CURRENT_BINARY_DIR}/${SECURE_TARGET}_nonsecure_image.bin)
+        set(NONSECURE_ASM ${CMAKE_CURRENT_BINARY_DIR}/${SECURE_TARGET}_nonsecure_image.S)
+        set(NONSECURE_LD ${CMAKE_CURRENT_BINARY_DIR}/${SECURE_TARGET}_nonsecure_image.ld)
+
+        # Binary info and the metadata block aren't used in an embedded binary
+        target_compile_definitions(${NONSECURE_TARGET} PRIVATE
+            PICO_NO_BINARY_INFO=1
+            PICO_CRT0_INCLUDE_PICOBIN_BLOCK=0
+        )
+
+        add_custom_command(OUTPUT ${NONSECURE_BIN}
+            COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${NONSECURE_TARGET}> ${NONSECURE_BIN}
+            DEPENDS ${NONSECURE_TARGET}
+            VERBATIM)
+
+        file(GENERATE OUTPUT ${NONSECURE_ASM} CONTENT
+            ".section .nonsecure_image, \"a\"\n.incbin \"${NONSECURE_BIN}\"\n")
+        target_sources(${SECURE_TARGET} PRIVATE ${NONSECURE_ASM})
+        set_source_files_properties(${NONSECURE_ASM} PROPERTIES OBJECT_DEPENDS ${NONSECURE_BIN})
+
+        # Place it at the start of the NonSecure SRAM region (NONSECURE_RAM_ORIGIN is set by
+        # pico_set_security_ram_split() with NO_FLASH)
+        file(GENERATE OUTPUT ${NONSECURE_LD} CONTENT
+"SECTIONS
+{
+    .nonsecure_image NONSECURE_RAM_ORIGIN : {
+        KEEP(*(.nonsecure_image))
+    }
+}
+INSERT AFTER .stack_dummy;
+")
+        target_link_options(${SECURE_TARGET} PRIVATE "LINKER:-T,${NONSECURE_LD}")
+        set_property(TARGET ${SECURE_TARGET} APPEND PROPERTY LINK_DEPENDS ${NONSECURE_LD})
     endfunction()
 endif()

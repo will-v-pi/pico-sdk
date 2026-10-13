@@ -96,24 +96,31 @@ bool rom_get_boot_random(uint32_t out[4]) {
     return false;
 }
 
+struct rom_resident_partition_table {
+    struct {
+        uint8_t partition_count;
+        uint8_t permission_partition_count; // >= partition_count and includes any regions added at runtime
+        bool loaded;
+    };
+    uint32_t unpartitioned_space_permissions_and_flags;
+    resident_partition_t partitions[PARTITION_TABLE_MAX_PARTITIONS];
+};
+
+static struct rom_resident_partition_table *rom_get_resident_partition_table(void) {
+    void **ptr = (void **)rom_data_lookup(ROM_DATA_PARTITION_TABLE_PTR);
+    assert(ptr);
+    assert(*ptr);
+    struct rom_resident_partition_table *pt = (struct rom_resident_partition_table *)*ptr;
+    assert(pt->loaded); // even if empty it should have been populated by the bootrom
+    return pt;
+}
+
 int rom_add_flash_runtime_partition(uint32_t start_offset, uint32_t size, uint32_t permissions) {
     if ((start_offset) & 4095 || (size & 4095)) return PICO_ERROR_BAD_ALIGNMENT;
     if (!size || start_offset + size > 32 * 1024 * 1024) return PICO_ERROR_INVALID_ARG;
     if (permissions & ~PICOBIN_PARTITION_PERMISSIONS_BITS) return PICO_ERROR_INVALID_ARG;
 
-    void **ptr = (void **)rom_data_lookup(ROM_DATA_PARTITION_TABLE_PTR);
-    assert(ptr);
-    assert(*ptr);
-    struct pt {
-        struct {
-            uint8_t partition_count;
-            uint8_t permission_partition_count; // >= partition_count and includes any regions added at runtime
-            bool loaded;
-        };
-        uint32_t unpartitioned_space_permissions_and_flags;
-        resident_partition_t partitions[PARTITION_TABLE_MAX_PARTITIONS];
-    } *pt = (struct pt *)*ptr;
-    assert(pt->loaded); // even if empty it should have been populated by the bootrom
+    struct rom_resident_partition_table *pt = rom_get_resident_partition_table();
     if (pt->permission_partition_count < pt->partition_count) pt->permission_partition_count = pt->partition_count;
     if (pt->permission_partition_count < PARTITION_TABLE_MAX_PARTITIONS) {
         pt->partitions[pt->permission_partition_count].permissions_and_location = permissions |
@@ -123,6 +130,30 @@ int rom_add_flash_runtime_partition(uint32_t start_offset, uint32_t size, uint32
         return pt->permission_partition_count++;
     }
     return PICO_ERROR_INSUFFICIENT_RESOURCES;
+}
+
+static resident_partition_t *rom_get_resident_partition_for_permissions(uint partition_num, uint32_t permissions) {
+    if (permissions & ~PICOBIN_PARTITION_PERMISSIONS_BITS) return NULL;
+
+    struct rom_resident_partition_table *pt = rom_get_resident_partition_table();
+    if (partition_num >= MAX(pt->partition_count, pt->permission_partition_count)) return NULL;
+    return &pt->partitions[partition_num];
+}
+
+int rom_add_flash_partition_permissions(uint partition_num, uint32_t permissions) {
+    resident_partition_t *partition = rom_get_resident_partition_for_permissions(partition_num, permissions);
+    if (!partition) return PICO_ERROR_INVALID_ARG;
+    partition->permissions_and_location |= permissions;
+    partition->permissions_and_flags |= permissions;
+    return PICO_OK;
+}
+
+int rom_remove_flash_partition_permissions(uint partition_num, uint32_t permissions) {
+    resident_partition_t *partition = rom_get_resident_partition_for_permissions(partition_num, permissions);
+    if (!partition) return PICO_ERROR_INVALID_ARG;
+    partition->permissions_and_location &= ~permissions;
+    partition->permissions_and_flags &= ~permissions;
+    return PICO_OK;
 }
 
 #if PICO_ALLOW_NONSECURE_PICK_AB && PICO_NONSECURE
