@@ -116,97 +116,44 @@ static void cyw43_sleep_timeout_reached(async_context_t *context, __unused async
 
 bool cyw43_driver_init(async_context_t *context) {
 #if CYW43_USE_FIRMWARE_PARTITION
-    uint32_t buffer[(16 * 4) + 1] = {}; // maximum of 16 partitions, each with maximum of 4 words returned, plus 1
-    int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_PARTITION_ID);
-
-    hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_PARTITION_ID));
-
-    if (ret > 0) {
-        int i = 1;
-        int p = 0;
-        int picked_p = -1;
-        while (i < ret) {
-            i++;
-            uint32_t flags_and_permissions = buffer[i++];
-            bool has_id = (flags_and_permissions & PICOBIN_PARTITION_FLAGS_HAS_ID_BITS);
-            if (has_id) {
-                uint64_t id = 0;
-                id |= buffer[i++];
-                id |= ((uint64_t)(buffer[i++]) << 32ull);
-                if (id == CYW43_FIRMWARE_PARTITION_ID) {
-                    picked_p = p;
-                    break;
-                }
-            }
-
-            p++;
-        }
-
-        if (picked_p >= 0) {
-            #ifdef __riscv
-                // Increased bootrom stack is required for this function
-                bootrom_stack_t stack = {
-                    .base = malloc(0x400),
-                    .size = 0x400
-                };
-                rom_set_bootrom_stack(&stack);
-            #endif
-            uint32_t* workarea = malloc(0x1000);
-            int check_p = rom_pick_ab_partition_during_update(workarea, 0x1000, picked_p);
-            if (check_p == BOOTROM_ERROR_INVALID_DATA) {
-            #if CYW43_FIRMWARE_PARTITION_ENSURE_VERIFICATION
-                CYW43_DEBUG("No block loop in CYW43 firmware B partition, so writing an invalid block there in order to verify the A partition\n");
-                flash_program_invalid_block_to_b_partition(picked_p);
-                picked_p = rom_pick_ab_partition_during_update(workarea, 0x1000, picked_p);
-            #else
-                // Allow an unverified A partition to be used
-                CYW43_DEBUG("No block loop in CYW43 firmware B partition, so using unverified A partition\n");
-            #endif
-            } else {
-                picked_p = check_p;
-            }
-            free(workarea);
-            #ifdef __riscv
-                // Reset bootrom stack
-                rom_set_bootrom_stack(&stack);
-                free(stack.base);
-            #endif
-
-            if (picked_p < 0) {
-                if (picked_p == BOOTROM_ERROR_NOT_FOUND) {
-                    CYW43_DEBUG("Chosen CYW43 firmware partition failed verification\n");
-                } else if (picked_p == BOOTROM_ERROR_NOT_PERMITTED) {
-                    CYW43_DEBUG("Too many update boots going on at once, so cannot choose CYW43 firmware partition\n");
-                }
-                return false;
-            }
-
-            CYW43_DEBUG("Chosen CYW43 firmware in partition %d\n", picked_p);
-            int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (picked_p << 24));
-            hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION));
-            hard_assert(ret == 3);
-
-            uint32_t location_and_permissions = buffer[1];
-            uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu) * FLASH_SECTOR_SIZE;
-            uint32_t eaddr = (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1) * FLASH_SECTOR_SIZE;
-            // Starts with metadata block
-            while(saddr < eaddr && *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr) != PICOBIN_BLOCK_MARKER_END) {
-                saddr += 4;
-            }
-            saddr += 4;
-            // Now onto data
-            cyw43_wifi_fw_len = *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr);
-            cyw43_clm_len = *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr + 4);
-            fw_data = XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr + 8;
+    uint32_t* workarea = malloc(0x1000);
+    if (!workarea) {
+        CYW43_DEBUG("Cannot allocate workarea to choose CYW43 firmware partition\n");
+        return false;
+    }
+    int picked_p = rom_pick_ab_partition_by_id(workarea, 0x1000, CYW43_FIRMWARE_PARTITION_ID, CYW43_FIRMWARE_PARTITION_ENSURE_VERIFICATION);
+    free(workarea);
+    if (picked_p < 0) {
+        if (picked_p == BOOTROM_ERROR_PRECONDITION_NOT_MET) {
+            CYW43_DEBUG("No partition table, so cannot get firmware from partition\n");
+        } else if (picked_p == BOOTROM_ERROR_NOT_FOUND) {
+            CYW43_DEBUG("No CYW43 firmware partition found, or chosen CYW43 firmware partition failed verification\n");
+        } else if (picked_p == BOOTROM_ERROR_NOT_PERMITTED) {
+            CYW43_DEBUG("Too many update boots going on at once, so cannot choose CYW43 firmware partition\n");
         } else {
-            CYW43_DEBUG("No CYW43 firmware partition found, so cannot get firmware from partition\n");
-            return false;
+            CYW43_DEBUG("Cannot choose CYW43 firmware partition - error %d\n", picked_p);
         }
-    } else {
-        CYW43_DEBUG("No partition table, so cannot get firmware from partition - get_partition_table_info returned %d\n", ret);
         return false;
     }
 
+    CYW43_DEBUG("Chosen CYW43 firmware in partition %d\n", picked_p);
+    uint32_t buffer[4 + 1] = {}; // single partition, with maximum of 4 words returned, plus 1
+    int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION | (picked_p << 24));
+    hard_assert(buffer[0] == (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION));
+    hard_assert(ret == 3);
+
+    uint32_t location_and_permissions = buffer[1];
+    uint32_t saddr = ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu) * FLASH_SECTOR_SIZE;
+    uint32_t eaddr = (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1) * FLASH_SECTOR_SIZE;
+    // Starts with metadata block
+    while(saddr < eaddr && *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr) != PICOBIN_BLOCK_MARKER_END) {
+        saddr += 4;
+    }
+    saddr += 4;
+    // Now onto data
+    cyw43_wifi_fw_len = *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr);
+    cyw43_clm_len = *(uint32_t*)(XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr + 4);
+    fw_data = XIP_NOCACHE_NOALLOC_NOTRANSLATE_BASE + saddr + 8;
 #endif
     cyw43_init(&cyw43_state);
     cyw43_async_context = context;

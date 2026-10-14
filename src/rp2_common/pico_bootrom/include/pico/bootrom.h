@@ -843,6 +843,60 @@ static inline int rom_pick_ab_partition(uint8_t *workarea_base, uint32_t workare
 int rom_pick_ab_partition_during_update(uint32_t *workarea_base, uint32_t workarea_size, uint partition_a_num);
 
 /*!
+ * \brief Find a partition by ID
+ * \ingroup pico_bootrom
+ *
+ * Searches the partition table for the first partition with the given ID.
+ *
+ * \param id the partition ID to search for
+ * \return >= 0 the partition number of the first partition with the given ID
+ *         BOOTROM_ERROR_NOT_FOUND if there is no partition with the given ID
+ *         BOOTROM_ERROR_PRECONDITION_NOT_MET if there is no partition table loaded
+ *         other negative values for other errors from \ref rom_get_partition_table_info()
+ */
+int rom_get_partition_by_id(uint64_t id);
+
+/*!
+ * \brief Program an invalid block to a B partition
+ * \ingroup pico_bootrom
+ *
+ * Programs a \ref PICOBIN_INVALID_BLOCK to the start of the B partition of a given A/B pair.
+ *
+ * This could be useful when you need to put a block loop in a partition to use \ref rom_pick_ab_partition(),
+ * but do not want that block loop to be bootable
+ *
+ * \param pi_a The A partition index
+ * \return 0 on success, negative error code on error
+ */
+int rom_program_invalid_block_to_b_partition(uint pi_a);
+
+/*!
+ * \brief Pick A/B partition by ID, without disturbing any in progress update or TBYB boot
+ * \ingroup pico_bootrom
+ *
+ * Finds the first partition with the given ID using \ref rom_get_partition_by_id(), then picks between it (as the
+ * A partition) and its B partition using \ref rom_pick_ab_partition_during_update(). On RISC-V an increased bootrom
+ * stack is also allocated using malloc.
+ *
+ * If there is no block loop in the B partition, then the A partition will not have been verified. In this case, if
+ * ensure_verification is true then an invalid block is written to the B partition (see
+ * \ref rom_program_invalid_block_to_b_partition()) and the pick is repeated, so that the A partition is verified;
+ * otherwise the unverified A partition is returned.
+ *
+ * \param workarea_base base address of work area
+ * \param workarea_size size of work area
+ * \param id the partition ID of the A partition
+ * \param ensure_verification whether to write an invalid block to the B partition if necessary, to ensure verification is performed
+ * \return >= 0 the partition number picked
+ *         BOOTROM_ERROR_NOT_FOUND if there is no partition with the given ID, or the chosen partition failed verification
+ *         BOOTROM_ERROR_PRECONDITION_NOT_MET if there is no partition table loaded
+ *         BOOTROM_ERROR_NOT_PERMITTED if not possible to do an update correctly, e.g. if both main image and data image are TBYB
+ *         PICO_ERROR_INSUFFICIENT_RESOURCES if memory allocation failed (RISC-V only)
+ *         other negative values for other errors
+ */
+int rom_pick_ab_partition_by_id(uint32_t *workarea_base, uint32_t workarea_size, uint64_t id, bool ensure_verification);
+
+/*!
  * \brief Get B partition
  * \ingroup pico_bootrom
  *
@@ -940,6 +994,42 @@ static inline int rom_chain_image(uint8_t *workarea_base, uint32_t workarea_size
     bootrom_acquire_lock_blocking(BOOTROM_LOCK_ENABLE);
     return rc;
 }
+
+#if !PICO_RISCV
+// PICO_CONFIG: PICO_BOOTROM_CHAIN_IMAGE_NO_RETURN_WORKAREA_SIZE, Size of the workarea at the bottom of USB RAM used by rom_chain_image_no_return; the rest of USB RAM is used as stack, type=int, default=0xd00, group=pico_bootrom
+#ifndef PICO_BOOTROM_CHAIN_IMAGE_NO_RETURN_WORKAREA_SIZE
+#define PICO_BOOTROM_CHAIN_IMAGE_NO_RETURN_WORKAREA_SIZE 0xd00
+#endif
+
+// todo SECURE only
+/*!
+ * \brief Chain into a launchable image, never returning to the caller
+ * \ingroup pico_bootrom
+ *
+ * As \ref rom_chain_image(), but for use when the image being chained into may overwrite the calling code (and its stack).
+ *
+ * The bottom PICO_BOOTROM_CHAIN_IMAGE_NO_RETURN_WORKAREA_SIZE bytes of USB RAM are used as the workarea, and the rest of USB RAM
+ * is used as the stack (with MSPLIM set to the top of the workarea), as USB RAM cannot be overwritten by the chained image.
+ * The USB controller is taken out of reset to make USB RAM accessible, and anything already in USB RAM (e.g. USB state) is lost.
+ *
+ * VTOR is set to the bootrom vector table, so any faults during the chain use the bootrom handlers rather than handlers
+ * in the calling image which may have been overwritten.
+ *
+ * The return address is set to the bootrom NMI handler (read from the bootrom vector table) before calling into the bootrom,
+ * so if the chain fails then execution continues in the bootrom NMI handler rather than returning an error to code which may
+ * no longer exist.
+ *
+ * NOTE: This function must be called while using the main stack (MSP), as only MSP (and MSPLIM) are switched to USB RAM.
+ * If called while using the process stack (PSP), the bootrom would continue to use a stack which may be overwritten by the
+ * chained image.
+ *
+ * NOTE: This function is only available on Arm.
+ *
+ * \param region_base base address of image
+ * \param region_size size of window containing image
+ */
+void __attribute__((noreturn)) rom_chain_image_no_return(uint32_t region_base, uint32_t region_size);
+#endif
 
 /*! \brief Parameters for the explicit buy helper used with flash_safe_execute
  *  \ingroup pico_bootrom

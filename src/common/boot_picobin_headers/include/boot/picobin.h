@@ -189,7 +189,7 @@ static inline bool picobin_load_map_is_relative(const picobin_load_map *lm) {
  *      uint32_t invalid_block[FLASH_PAGE_SIZE/sizeof(uint32_t)] = PICOBIN_INVALID_BLOCK;
  * 
  * This could be useful when you need to put a block loop in a partition to use \ref rom_pick_ab_partition(),
- * but do not want that block loop to be bootable (e.g. see \ref flash_program_invalid_block_to_b_partition())
+ * but do not want that block loop to be bootable (e.g. see \ref rom_program_invalid_block_to_b_partition())
  */
 #define PICOBIN_INVALID_BLOCK { \
     PICOBIN_BLOCK_MARKER_START, \

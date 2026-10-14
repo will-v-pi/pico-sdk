@@ -52,7 +52,7 @@ if (NOT TARGET pico_rpi_connect_ota)
 endif()
 
 
-# pico_add_rpi_connect_ota_outputs(TARGET CONFIGURATION [WIFI_SSID <ssid>] [WIFI_PASSWORD <password>] [CONNECT_TOKEN <token>] [COMBINED_TARGET <name>] [NO_BOARD] [NO_DATE] [UPDATE_DIR <directory>] [PARTITION_TABLE <path>])
+# pico_add_rpi_connect_ota_outputs(TARGET CONFIGURATION [WIFI_SSID <ssid>] [WIFI_PASSWORD <password>] [CONNECT_TOKEN <token>] [COMBINED_TARGET <name>] [NO_BOARD] [NO_DATE] [UPDATE_DIR <directory>] [PARTITION_TABLE <path>] [PARTITIONS <partitions>...] [UPDATE_TARGETS <targets>...])
 # \brief_nodesc\ Add UF2 outputs for use with rpi_connect_ota
 #
 # Adds UF2 outputs created from TARGET for use with rpi_connect_ota,
@@ -82,9 +82,12 @@ endif()
 # \param\ NO_DATE Don't include the current date in the update filename
 # \param\ UPDATE_DIR Directory to place the update UF2 in - defaults to ${CMAKE_CURRENT_LIST_DIR}/updates
 # \param\ PARTITION_TABLE Specify custom path to partition table to use - must match the partition layout expected by the configuration
+# \param\ PARTITIONS Specify custom partition numbers to use - must match the order expected by the configuration
+# \param\ UPDATE_TARGETS Specify additional targets to add TBYB UF2s for
 function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
     set(options NO_DATE NO_BOARD)
     set(oneValueArgs WIFI_SSID WIFI_PASSWORD CONNECT_TOKEN COMBINED_TARGET UPDATE_DIR PARTITION_TABLE)
+    set(multiValueArgs PARTITIONS UPDATE_TARGETS)
     cmake_parse_arguments(PARSE_ARGV 2 OPT "${options}" "${oneValueArgs}" "${multiValueArgs}")
 
     if (NOT OPT_COMBINED_TARGET)
@@ -93,6 +96,14 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
 
     if (NOT OPT_UPDATE_DIR)
         set(OPT_UPDATE_DIR "${CMAKE_CURRENT_LIST_DIR}/updates")
+    endif()
+
+    if (CONFIGURATION STREQUAL "default")
+        if (NOT TARGET ${TARGET}_wifi_firmware)
+            # Ensure TARGET is configured to use wifi firmware from partition
+            # (no embedded PT as using FFS one, and no TBYB variant as that's created below)
+            pico_use_wifi_firmware_partition(${TARGET} NO_EMBEDDED_PT NO_TBYB)
+        endif()
     endif()
 
     if (OPT_PARTITION_TABLE)
@@ -110,11 +121,6 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
         math(EXPR FLASH_SIZE_K "(${PICO_FLASH_SIZE_BYTES})/1024")
         if (CONFIGURATION STREQUAL "default")
             math(EXPR MAIN_SIZE "(${FLASH_SIZE_K} - (${WIFI_FW_SIZE}*2) - ${FFS_SIZE} - ${USED_SIZE}) / 2")
-            if (NOT TARGET ${TARGET}_wifi_firmware)
-                # Ensure TARGET is configured to use wifi firmware from partition
-                # (no embedded PT as using FFS one, and no TBYB variant as that's created below)
-                pico_use_wifi_firmware_partition(${TARGET} NO_EMBEDDED_PT NO_TBYB)
-            endif()
         elseif (CONFIGURATION STREQUAL "no_wifi_firmware")
             math(EXPR MAIN_SIZE "(${FLASH_SIZE_K} - ${FFS_SIZE} - ${USED_SIZE}) / 2")
         else()
@@ -148,54 +154,64 @@ function(pico_add_rpi_connect_ota_outputs TARGET CONFIGURATION)
     pico_create_erase_partition_uf2(${TARGET}_erase)
 
     if (CONFIGURATION STREQUAL "default")
+        if (NOT OPT_PARTITIONS)
+            set(OPT_PARTITIONS 0 1 2 3 4)
+        endif()
         pico_combine_uf2_outputs(${OPT_COMBINED_TARGET} ${TARGET}_pt
             ${TARGET} ${TARGET}_erase
             ${TARGET}_wifi_firmware ${TARGET}_erase
             ${TARGET}_ffs_blob
-            PARTITIONS 0 1 2 3 4)
+            PARTITIONS ${OPT_PARTITIONS})
     elseif (CONFIGURATION STREQUAL "no_wifi_firmware")
+        if (NOT OPT_PARTITIONS)
+            set(OPT_PARTITIONS 0 1 2)
+        endif()
         pico_combine_uf2_outputs(${OPT_COMBINED_TARGET} ${TARGET}_pt
             ${TARGET} ${TARGET}_erase
             ${TARGET}_ffs_blob
-            PARTITIONS 0 1 2)
+            PARTITIONS ${OPT_PARTITIONS})
     else()
         message(FATAL_ERROR "Unknown rpi_connect_ota configuration '${CONFIGURATION}'")
     endif()
 
-    set(update_suffix "")
+    list(INSERT OPT_UPDATE_TARGETS 0 ${TARGET})
 
-    get_target_property(rollback ${TARGET} PICOTOOL_ROLLBACK_VERSION)
-    if (rollback) # 0 rollback version isn't supported
-        set(update_suffix "${update_suffix}-r${rollback}")
-    endif()
-    get_target_property(major ${TARGET} PICOTOOL_MAJOR_VERSION)
-    if (NOT major)
-        set(major 0)
-    endif()
-    get_target_property(minor ${TARGET} PICOTOOL_MINOR_VERSION)
-    if (NOT minor)
-        set(minor 0)
-    endif()
+    foreach(target IN LISTS OPT_UPDATE_TARGETS)
+        set(update_suffix "")
 
-    set(update_suffix "${update_suffix}-v${major}.${minor}")
+        get_target_property(rollback ${target} PICOTOOL_ROLLBACK_VERSION)
+        if (rollback) # 0 rollback version isn't supported
+            set(update_suffix "${update_suffix}-r${rollback}")
+        endif()
+        get_target_property(major ${target} PICOTOOL_MAJOR_VERSION)
+        if (NOT major)
+            set(major 0)
+        endif()
+        get_target_property(minor ${target} PICOTOOL_MINOR_VERSION)
+        if (NOT minor)
+            set(minor 0)
+        endif()
 
-    if (NOT OPT_NO_BOARD)
-        set(update_suffix "${update_suffix}-${PICO_BOARD}")
-    endif()
+        set(update_suffix "${update_suffix}-v${major}.${minor}")
 
-    if (NOT OPT_NO_DATE)
-        string(TIMESTAMP current_date "%Y-%m-%d")
-        set(update_suffix "${update_suffix}-${current_date}")
-    endif()
+        if (NOT OPT_NO_BOARD)
+            set(update_suffix "${update_suffix}-${PICO_BOARD}")
+        endif()
 
-    pico_add_tbyb_uf2(${TARGET} OUTTARGET ${TARGET}_update OUTFILE ${OPT_UPDATE_DIR}/${TARGET}${update_suffix}.uf2)
-    pico_add_uf2_sha256sum(${TARGET}_update)
-    add_dependencies(${OPT_COMBINED_TARGET} ${TARGET}_update ${TARGET}_update_sha256sum)
+        if (NOT OPT_NO_DATE)
+            string(TIMESTAMP current_date "%Y-%m-%d")
+            set(update_suffix "${update_suffix}-${current_date}")
+        endif()
 
-    if (TARGET ${TARGET}_wifi_firmware)
-        # Create wifi firmware update UF2 too
-        pico_add_tbyb_uf2(${TARGET}_wifi_firmware OUTTARGET ${TARGET}_wifi_firmware_update OUTFILE ${OPT_UPDATE_DIR}/${TARGET}_wifi_firmware${update_suffix}.uf2)
-        pico_add_uf2_sha256sum(${TARGET}_wifi_firmware_update)
-        add_dependencies(${OPT_COMBINED_TARGET} ${TARGET}_wifi_firmware_update ${TARGET}_wifi_firmware_update_sha256sum)
-    endif()
+        pico_add_tbyb_uf2(${target} OUTTARGET ${target}_update OUTFILE ${OPT_UPDATE_DIR}/${target}${update_suffix}.uf2)
+        pico_add_uf2_sha256sum(${target}_update)
+        add_dependencies(${OPT_COMBINED_TARGET} ${target}_update ${target}_update_sha256sum)
+
+        if (TARGET ${target}_wifi_firmware)
+            # Create wifi firmware update UF2 too
+            pico_add_tbyb_uf2(${target}_wifi_firmware OUTTARGET ${target}_wifi_firmware_update OUTFILE ${OPT_UPDATE_DIR}/${target}_wifi_firmware${update_suffix}.uf2)
+            pico_add_uf2_sha256sum(${target}_wifi_firmware_update)
+            add_dependencies(${OPT_COMBINED_TARGET} ${target}_wifi_firmware_update ${target}_wifi_firmware_update_sha256sum)
+        endif()
+    endforeach()
 endfunction()

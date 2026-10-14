@@ -16,8 +16,6 @@
 
 #define NUMBER_OF_CHUNKS                2
 
-#define PT_ID_LOCATION_AND_FLAGS \
-    (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_PARTITION_ID)
 #define PT_SINGLE_LOCATION_AND_FLAGS \
     (PT_INFO_PARTITION_LOCATION_AND_FLAGS | PT_INFO_SINGLE_PARTITION)
 
@@ -66,41 +64,14 @@ typedef struct {
 static ffs_data_t ffs_data = { 0 };
 
 #ifndef PICO_RP2040
-// This code copied from: pico-sdk/src/rp2_common/pico_cyw43_driver/cyw43_driver.c
 static int get_ffs_partition_info(void) {
-
-    // maximum of 16 partitions, each with maximum of 4 words returned, plus 1
-    uint32_t buffer[(16 * 4) + 1] = { };
-
-    int num_p = rom_get_partition_table_info(buffer, count_of(buffer), PT_ID_LOCATION_AND_FLAGS);
-    if (0 >= num_p || PT_ID_LOCATION_AND_FLAGS != buffer[0]) {
-        return PICO_ERROR_GENERIC;
-    }
-
-    int picked_p = -1;
-    int p = 0;
-    int i = 1;
-
-    while (i < num_p) {
-        i++;
-        uint32_t flags_and_permissions = buffer[i++];
-        bool has_id = (flags_and_permissions & PICOBIN_PARTITION_FLAGS_HAS_ID_BITS);
-        if (has_id) {
-            uint64_t id = 0;
-            id |= buffer[i++];
-            id |= ((uint64_t)(buffer[i++]) << 32ull);
-            if (id == FFS_DATA_PARTITION_ID) {
-                picked_p = p;
-                break;
-            }
-        }
-        p++;
-    }
-
+    int picked_p = rom_get_partition_by_id(FFS_DATA_PARTITION_ID);
     if (0 > picked_p) {
         return PICO_ERROR_GENERIC;
     }
 
+    // single partition, with maximum of 4 words returned, plus 1
+    uint32_t buffer[4 + 1] = { };
     int ret = rom_get_partition_table_info(buffer, count_of(buffer), PT_SINGLE_LOCATION_AND_FLAGS | (picked_p << 24));
     if (3 != ret || PT_SINGLE_LOCATION_AND_FLAGS != buffer[0]) {
         return PICO_ERROR_NOT_FOUND;
