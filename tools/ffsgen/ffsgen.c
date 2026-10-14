@@ -20,6 +20,8 @@
 
 // 4k is often one SPI flash sector size and is on Pico boards
 #define FFSGEN_EXPECTED_SECTOR_SIZE     4096
+// ffs uses two chunks; the blob covers both, with the second one erased
+#define FFSGEN_NUM_CHUNKS               2
 #define NUM_OF_FIDS                     (FFS_MAX_VALID_FILE_ID + 1)
 #define MAX_LINE_LEN                    256
 
@@ -198,8 +200,10 @@ int main(int argc, char *argv[]) {
         printf("etc. etc.\n");
         printf("File IDs must be (a) unique (b) in the range 0-254 (decimal)\n");
         printf("Filenames must locate a file or include a path and a filename\n");
-        printf("The output file is binary. It must be programmed at the start of the (otherwise empty) ffs area\n");
+        printf("The output file is binary, and covers the whole ffs area (two chunks, with the second chunk erased).\n");
+        printf("It must be programmed at the start of the ffs area, and replaces any existing ffs contents\n");
         printf("The 'chunk_size' argument is optional, if not used the default is %u bytes\n", FFSGEN_EXPECTED_SECTOR_SIZE);
+        printf("The chunk size must be half the size of the ffs area\n");
         return -1;
     }
 
@@ -217,13 +221,16 @@ int main(int argc, char *argv[]) {
         printf("info - defaulting the chunk size to %i bytes\n", ffsgen.chunk_size);
     }
 
-    if (NULL == (ffsgen.chunk_mem = malloc(ffsgen.chunk_size))) {
-        printf("error - failed to allocate %i bytes of memory\n", ffsgen.chunk_size);
+    // Files are only written into the first chunk, but the blob covers all chunks, so that programming it
+    // erases any existing (possibly valid) second chunk
+    uint blob_size = ffsgen.chunk_size * FFSGEN_NUM_CHUNKS;
+    if (NULL == (ffsgen.chunk_mem = malloc(blob_size))) {
+        printf("error - failed to allocate %i bytes of memory\n", blob_size);
         return -1;
     }
     else {
         //  Make the blob all virgin flash values to start with.
-        memset(ffsgen.chunk_mem, 0xFF, ffsgen.chunk_size);
+        memset(ffsgen.chunk_mem, 0xFF, blob_size);
     }
 
     if (NULL == (fp_config = fopen(argv[1], "r"))) {
@@ -247,9 +254,9 @@ int main(int argc, char *argv[]) {
     }
 
     if (!ret_error) {
-        size_t wr_result = fwrite(ffsgen.chunk_mem, 1, ffsgen.chunk_size, fp_output);
-        if (ffsgen.chunk_size == wr_result) {
-            printf("info - success, wrote %i bytes to '%s'\n", ffsgen.chunk_size, argv[2]);
+        size_t wr_result = fwrite(ffsgen.chunk_mem, 1, blob_size, fp_output);
+        if (blob_size == wr_result) {
+            printf("info - success, wrote %i bytes to '%s'\n", blob_size, argv[2]);
         }
         else {
             printf("error - failed to write data to '%s', returned: %li\n", argv[2], wr_result);

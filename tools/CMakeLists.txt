@@ -994,12 +994,13 @@ endfunction()
 # pico_create_ffs_blob_uf2(TARGET <FILES>... [FILE_IDS <file_ids>...] [CHUNK_SIZE <size>] [FAMILY <family>] [OFFSET <offset>])
 # \brief_nodesc\ Create an ffs blob UF2 file
 #
-# Create a UF2 containing the generated ffs blob
+# Create a UF2 containing the generated ffs blob. The blob covers the whole ffs partition (two chunks),
+# with the second chunk erased, so flashing it replaces any existing ffs contents.
 #
 # \param\ TARGET The name of the target to create
 # \param\ FILES The files to include in the ffs
 # \param\ FILE_IDS The file IDs to use for each file
-# \param\ CHUNK_SIZE Specify the ffs chunk size (default is 4096)
+# \param\ CHUNK_SIZE Specify the ffs chunk size, which must be half the ffs partition size (default is 4096)
 # \param\ FAMILY Specify the family for the output UF2 (default is data)
 # \param\ OFFSET Specify the address to target the UF2 at (default is start of flash)
 function(pico_create_ffs_blob_uf2 TARGET)
@@ -1039,11 +1040,15 @@ function(pico_create_ffs_blob_uf2 TARGET)
         list(APPEND picotool_args "--offset" "${FFS_OFFSET}")
     endif()
 
+    if (NOT FFS_CHUNK_SIZE)
+        set(FFS_CHUNK_SIZE 4096)
+    endif()
+
     pico_init_ffsgen()
     pico_init_picotool()
     if (ffsgen_FOUND AND picotool_FOUND)
         add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.bin
-            COMMAND ffsgen ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.txt ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.bin ${FFS_CHUNKSIZE}
+            COMMAND ffsgen ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.txt ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.bin ${FFS_CHUNK_SIZE}
             DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.txt ${FILES}
             VERBATIM)
 

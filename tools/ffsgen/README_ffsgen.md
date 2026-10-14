@@ -37,7 +37,7 @@ ffsgen <config_file> <output_file> [chunk_size]
 | Argument | Description |
 |---|---|
 | `config_file` | Path to the text configuration file describing the files to include (see below). |
-| `output_file` | Path for the binary output blob.  This file must be programmed at the start of the (otherwise erased) ffs flash area. |
+| `output_file` | Path for the binary output blob.  This file must be programmed at the start of the ffs flash area, and replaces any existing ffs contents. |
 | `chunk_size`  | *Optional.*  Size of one ffs chunk in bytes.  Should be an integer multiple of the flash sector size (4096 bytes on all Pico boards) — `ffsgen` will warn, but still proceed, if it is not.  Defaults to 4096 bytes if omitted. |
 
 ### Configuration file format
@@ -64,7 +64,7 @@ Lines beginning with `#` are treated as comments and ignored.  A minimal example
 
 ### Output
 
-`ffsgen` writes a single binary file of exactly `chunk_size` bytes (default: 4096 bytes), pre-filled with `0xFF` (the unprogrammed flash value) and then populated with the ffs chunk header followed by the specified files in the order they appear in the configuration file.
+`ffsgen` writes a single binary file of exactly twice `chunk_size` bytes (default: 8192 bytes), covering the whole ffs area.  It is pre-filled with `0xFF` (the unprogrammed flash value), and the first chunk is then populated with the ffs chunk header followed by the specified files in the order they appear in the configuration file.  The second chunk is left erased.
 
 The output file is intended to be programmed directly into flash at the start of the ffs storage area, before the application is first run.  It can be concatenated with other firmware images (application binary, Wi-Fi firmware, etc.) and programmed in a single step using `picotool` or similar.
 
@@ -72,7 +72,7 @@ The output file is intended to be programmed directly into flash at the start of
 
 ### Notes
 
-- The output represents only **one** ffs chunk.  At runtime, ffs manages two chunks internally; the second chunk starts as virgin (erased) flash and is prepared automatically by ffs on first use.
+- At runtime, ffs manages two chunks internally.  The output contains both: the first holds the files, and the second is virgin (erased) flash, which is prepared automatically by ffs on first use.  Including the erased second chunk means programming the blob over an existing ffs area cannot leave a stale (possibly still valid) second chunk behind.
 - If the accumulated file data (including file headers and alignment padding) will not fit within a single chunk, `ffsgen` will report an error and no output file will be written.
 - The `chunk_size` supplied to `ffsgen` must match the chunk size that will be used at runtime, which is half the total flash area allocated to ffs.
 
